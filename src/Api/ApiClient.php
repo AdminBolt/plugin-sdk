@@ -168,6 +168,39 @@ class ApiClient
     }
 
     /**
+     * A response body that is not JSON: a file the panel streams back.
+     *
+     * Everything else here decodes to an array, which is right for an API and
+     * wrong for the contents of a .env file. Same signing, same retries, no
+     * decoding.
+     *
+     * @param  array<string, mixed> $query
+     *
+     * @throws ApiException when the panel answers with a non-2xx status
+     * @throws TransportException when no answer arrives at all
+     */
+    public function contents(string $path, array $query = []): string
+    {
+        $url = $this->url($path, $query);
+
+        $headers = [
+            'X-API-Key' => $this->apiKey,
+            'X-API-Secret' => $this->apiSecret,
+            'Accept' => '*/*',
+            'User-Agent' => 'adminbolt-plugin-sdk/1.0 (+https://github.com/AdminBolt/plugin-sdk)',
+            ...$this->defaultHeaders,
+        ];
+
+        $response = $this->sendWithRetries('GET', $url, $headers, null, $path);
+
+        if (!$response->isSuccessful()) {
+            throw ApiException::fromResponse('GET', $path, $response->status, $response->json(), $response->body);
+        }
+
+        return $response->body;
+    }
+
+    /**
      * @param array<string, string> $headers
      */
     private function sendWithRetries(string $method, string $url, array $headers, ?string $body, string $path): HttpResponse

@@ -26,6 +26,13 @@ final class Manifest
     private const ID_PATTERN = '/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/';
 
     /**
+     * What a declared command's parameter may be. No free string, on purpose:
+     * a parameter a plugin can fill with anything is a command a plugin can
+     * rewrite, and then the approval screen described something else.
+     */
+    private const PARAMETER_TYPES = ['enum', 'path', 'token', 'pattern', 'int'];
+
+    /**
      * @param array<mixed> $raw
      */
     private function __construct(
@@ -144,6 +151,7 @@ final class Manifest
         $errors = [...$errors, ...self::validateSettings(Arr::get($data, 'settings', []))];
         $errors = [...$errors, ...self::validateScopes(Arr::get($data, 'api.scopes', []))];
         $errors = [...$errors, ...self::validateUi(Arr::get($data, 'ui', []))];
+        $errors = [...$errors, ...self::validateCommands($data)];
 
         return $errors;
     }
@@ -333,6 +341,162 @@ final class Manifest
         return $errors;
     }
 
+    /**
+     * The commands a plugin asks to run in an account.
+     *
+     * These are the highest-consequence lines in a manifest, and they are the
+     * ones an administrator reads on the approval screen, so the rules are
+     * strict and the messages say what to write instead.
+     *
+     * @param  array<mixed> $data
+     * @return list<string>
+     */
+    private static function validateCommands(array $data): array
+    {
+        $commands = Arr::get($data, 'commands', []);
+
+        if ($commands === []) {
+            return [];
+        }
+
+        if (!is_array($commands)) {
+            return ['"commands" must be an array of command definitions.'];
+        }
+
+        $errors = [];
+        $seen = [];
+        $scopes = (array) Arr::get($data, 'api.scopes', []);
+
+        if (!in_array('client:cli:execute', $scopes, true) && !in_array('admin:cli:execute', $scopes, true)) {
+            $errors[] = '"commands" are declared but no "client:cli:execute" scope is asked for, so none of them can run. '
+                . 'Add it to "api.scopes": it is what the administrator approves.';
+        }
+
+        foreach ($commands as $index => $command) {
+            $label = sprintf('commands[%s]', (string) $index);
+
+            if (!is_array($command)) {
+                $errors[] = $label . ' must be an object.';
+                continue;
+            }
+
+            $name = $command['name'] ?? null;
+
+            if (!is_string($name) || preg_match(self::ID_PATTERN, $name) !== 1) {
+                $errors[] = $label . '.name is required and must be lower-case kebab-case; it is what the plugin passes to cli()->run().';
+                continue;
+            }
+
+            if (isset($seen[$name])) {
+                $errors[] = sprintf('%s declares "%s" twice; one definition per name.', $label, $name);
+            }
+
+            $seen[$name] = true;
+
+            $steps = $command['steps'] ?? null;
+
+            if ($steps === null) {
+                if (!isset($command['program'])) {
+                    $errors[] = $label . ' needs either a "program" and "args", or a "steps" array.';
+                    continue;
+                }
+
+                $steps = [['program' => $command['program'], 'args' => $command['args'] ?? []]];
+            }
+
+            if (!is_array($steps) || $steps === []) {
+                $errors[] = $label . '.steps must be a non-empty array.';
+                continue;
+            }
+
+            $placeholders = [];
+
+            foreach ($steps as $stepIndex => $step) {
+                $stepLabel = sprintf('%s.steps[%s]', $label, (string) $stepIndex);
+
+                if (!is_array($step) || !is_string($step['program'] ?? null)) {
+                    $errors[] = $stepLabel . '.program is required and must be a program name such as "php" or "composer". '
+                        . 'A path is not accepted: the panel resolves the program, and for "php" it resolves the version the account is on.';
+                    continue;
+                }
+
+                foreach ((array) ($step['args'] ?? []) as $arg) {
+                    if (!is_string($arg)) {
+                        $errors[] = $stepLabel . '.args must be an array of strings.';
+                        continue;
+                    }
+
+                    if (preg_match_all('/\{([a-z][a-z0-9_]*)\}/', $arg, $matches) > 0) {
+                        foreach ($matches[1] as $placeholder) {
+                            $placeholders[$placeholder] = $stepLabel;
+                        }
+                    }
+                }
+            }
+
+            $params = $command['params'] ?? [];
+
+            if (!is_array($params)) {
+                $errors[] = $label . '.params must be an object keyed by parameter name.';
+                $params = [];
+            }
+
+            foreach ($params as $paramName => $param) {
+                $paramLabel = sprintf('%s.params.%s', $label, (string) $paramName);
+
+                if (!is_array($param) || !is_string($param['type'] ?? null)) {
+                    $errors[] = $paramLabel . '.type is required.';
+                    continue;
+                }
+
+                $type = $param['type'];
+
+                if (!in_array($type, self::PARAMETER_TYPES, true)) {
+                    $errors[] = sprintf(
+                        '%s.type is "%s". Use one of: %s. There is deliberately no free string type: a parameter a plugin can fill with anything is a command a plugin can rewrite.',
+                        $paramLabel,
+                        $type,
+                        implode(', ', self::PARAMETER_TYPES)
+                    );
+                    continue;
+                }
+
+                if ($type === 'enum' && (!is_array($param['values'] ?? null) || $param['values'] === [])) {
+                    $errors[] = $paramLabel . ' is an enum and must list its "values".';
+                }
+
+                if ($type === 'pattern' && !is_string($param['pattern'] ?? null)) {
+                    $errors[] = $paramLabel . ' is a pattern and must declare its "pattern". The panel anchors it, so write the body only.';
+                }
+            }
+
+            foreach ($placeholders as $placeholder => $where) {
+                if (!isset($params[$placeholder])) {
+                    $errors[] = sprintf(
+                        '%s uses {%s}, which is not declared in %s.params. An undeclared placeholder would be left in the command line as literal text.',
+                        $where,
+                        $placeholder,
+                        $label
+                    );
+                }
+            }
+
+            $timeout = $command['timeout'] ?? null;
+
+            if ($timeout !== null && (!is_int($timeout) || $timeout < 1 || $timeout > 1800)) {
+                $errors[] = $label . '.timeout must be an integer between 1 and 1800 seconds.';
+            }
+
+            $cwd = $command['cwd'] ?? 'required';
+
+            if (!in_array($cwd, ['required', 'optional', 'none'], true)) {
+                $errors[] = $label . '.cwd must be "required", "optional" or "none".';
+            }
+        }
+
+        return $errors;
+    }
+
     /** @return list<string> */
     private static function validateScopes(mixed $scopes): array
     {
@@ -347,9 +511,9 @@ final class Manifest
         $errors = [];
 
         foreach ($scopes as $scope) {
-            if (!is_string($scope) || preg_match('/^(admin|client|reseller):[a-z0-9\-\/*]+:(read|write)$/', $scope) !== 1) {
+            if (!is_string($scope) || preg_match('/^(admin|client|reseller):[a-z0-9\-\/*]+:(read|write|execute)$/', $scope) !== 1) {
                 $errors[] = sprintf(
-                    'Scope "%s" is malformed. Use "<api>:<resource>:<read|write>", for example "client:dns-records:write".',
+                    'Scope "%s" is malformed. Use "<api>:<resource>:<read|write|execute>", for example "client:dns-records:write".',
                     is_string($scope) ? $scope : get_debug_type($scope)
                 );
             }
@@ -411,6 +575,39 @@ final class Manifest
      *
      * @return list<array{panel: string, slug: string, title: string, render: string, icon: ?string, group: ?string, path: ?string}>
      */
+    /**
+     * The commands this plugin declares, as written.
+     *
+     * What may actually run is the panel's approved copy of these, which can
+     * be less: a version that adds a command runs nothing new until somebody
+     * has read the change. Ask the panel with cli()->commands() when that
+     * distinction matters.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function commands(): array
+    {
+        $commands = $this->raw['commands'] ?? [];
+
+        return is_array($commands) ? array_values(array_filter($commands, 'is_array')) : [];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function commandNames(): array
+    {
+        return array_values(array_filter(array_map(
+            static fn (array $command): ?string => is_string($command['name'] ?? null) ? $command['name'] : null,
+            $this->commands()
+        )));
+    }
+
+    public function declaresCommand(string $name): bool
+    {
+        return in_array($name, $this->commandNames(), true);
+    }
+
     public function ui(): array
     {
         $ui = $this->raw['ui'] ?? [];

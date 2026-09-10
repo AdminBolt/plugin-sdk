@@ -42,7 +42,7 @@ which is a much worse failure than a refused install.
 
 ## `api.scopes`
 
-What the plugin's API key may reach, as `<api>:<resource>:<read|write>`:
+What the plugin's API key may reach, as `<api>:<resource>:<read|write|execute>`:
 
 ```json
 "api": {
@@ -56,6 +56,10 @@ What the plugin's API key may reach, as `<api>:<resource>:<read|write>`:
 
 The panel mints the key with exactly these endpoints and nothing else. These
 are shown to the administrator approving the install, so ask for the minimum.
+
+`execute` is its own access level, used by `client:cli:execute`, because
+running programs in somebody's account is not a write and an approval screen
+that called it one would have misinformed the only person it exists for.
 
 ## `hooks`
 
@@ -92,6 +96,49 @@ Rendered by the panel as a form, stored encrypted, handed back through
 Types: `string`, `secret`, `bool`, `int`, `select`, `text`, `url`.
 
 A `secret` is write-only in the panel UI and must not declare a `default`.
+
+## `commands`
+
+The programs a plugin may run in an account. An administrator approves these
+by name and by argument, and the panel builds every command line from its own
+copy of them.
+
+```json
+"commands": [
+    {
+        "name": "artisan",
+        "label": "Run an Artisan command",
+        "program": "php",
+        "args": ["artisan", "{command}", "--no-interaction"],
+        "params": {
+            "command": { "type": "enum", "values": ["migrate:status", "optimize"] }
+        },
+        "cwd": "required",
+        "timeout": 120
+    }
+]
+```
+
+| Field | Default | Notes |
+| --- | --- | --- |
+| `name` | required | Lower-case kebab-case. What the plugin passes to `cli()->run()`. |
+| `label` | the name | What the administrator reads on the approval screen. |
+| `program` | | A program name such as `php` or `composer`, never a path. Shorthand for a one-entry `steps`. |
+| `args` | `[]` | The argument template. `{name}` placeholders must be declared in `params`. |
+| `steps` | | Several programs run in order, stopping at the first non-zero exit. Up to twelve. |
+| `params` | `{}` | Typed values the plugin supplies at runtime. |
+| `cwd` | `required` | `required`, `optional` or `none`: whether the caller names a directory inside the account home. |
+| `timeout` | `60` | Seconds, up to 1800. |
+| `async` | `false` | Run it as a job the plugin polls, for anything that outlives a request. |
+
+Parameter types are `enum`, `path`, `token`, `pattern` and `int`. There is no
+free string type, and no value may begin with a hyphen.
+
+Declaring commands without `client:cli:execute` fails validation: none of them
+could run, and the scope is what the administrator actually approves.
+
+Full detail, including what the panel checks before it spawns anything, is in
+[commands.md](commands.md).
 
 ## `ui`
 

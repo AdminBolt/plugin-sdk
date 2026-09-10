@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AdminBolt\Plugin\Api;
 
 use AdminBolt\Plugin\Api\Resource\Account;
+use AdminBolt\Plugin\Api\Resource\Cli;
 use AdminBolt\Plugin\Api\Resource\CronJobs;
 use AdminBolt\Plugin\Api\Resource\Databases;
 use AdminBolt\Plugin\Api\Resource\DatabaseUsers;
@@ -103,6 +104,17 @@ final class ClientApi
     public function files(): Files
     {
         return new Files($this->client);
+    }
+
+    /**
+     * Running the commands this plugin declared in its manifest.
+     *
+     * Only a plugin reaches this, and only for the commands an administrator
+     * approved. See Cli for why it is shaped that way.
+     */
+    public function cli(): Cli
+    {
+        return new Cli($this->client);
     }
 
     public function wordpress(): Wordpress

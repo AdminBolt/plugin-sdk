@@ -75,6 +75,7 @@ bolt-plugin hook domain.creating --payload='{"domain":"example.test"}'
 - [Hooks](docs/hooks.md) — the catalogue, the envelope, signatures, vetoes and mutations
 - [Calling the panel API](docs/api.md) — admin and client APIs, scopes, errors, retries
 - [Plugin pages](docs/ui.md) — putting your own pages in the panel
+- [Running commands](docs/commands.md) — declaring what a plugin may run in an account
 - [plugin.json](docs/manifest.md) — every manifest field
 - [What the panel implements](docs/panel-integration.md) — the panel-side half of the contract
 
@@ -109,6 +110,39 @@ retried identically.
 The key is minted by the panel at install time and scoped to the endpoints the
 manifest declared. A call outside them comes back 403. Ask for the minimum:
 the scopes are shown to the administrator approving the install.
+
+## Running something in an account
+
+A plugin can run `php artisan migrate` or `composer install` for the account
+whose page it is drawing. It cannot run *a* command: it declares the ones it
+needs, an administrator approves them by name and by argument, and the panel
+builds every command line from its own copy of what was approved.
+
+```json
+"commands": [
+    {
+        "name": "artisan",
+        "program": "php",
+        "args": ["artisan", "{command}", "--no-interaction"],
+        "params": { "command": { "type": "enum", "values": ["migrate:status", "optimize"] } },
+        "cwd": "required"
+    }
+]
+```
+
+```php
+$result = $plugin->clientFor($request)->cli()->run('artisan', ['command' => 'optimize'], cwd: 'shop');
+
+$result->ok();
+$result->output();
+```
+
+A non-zero exit is a result, not an exception: a failed migration has
+something to tell the customer and it is on stdout. Anything that outlives a
+request is `async` and polled instead.
+
+[docs/commands.md](docs/commands.md) has the rest, including what the panel
+checks before it spawns anything.
 
 ## Testing
 

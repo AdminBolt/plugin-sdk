@@ -18,6 +18,7 @@ use AdminBolt\Plugin\Logging\Logger;
 use AdminBolt\Plugin\Logging\NullLogger;
 use AdminBolt\Plugin\Runtime\CliRuntime;
 use AdminBolt\Plugin\Runtime\HttpRuntime;
+use AdminBolt\Plugin\Storage\Store;
 use AdminBolt\Plugin\Ui\Page;
 use AdminBolt\Plugin\Ui\UiRequest;
 use AdminBolt\Plugin\Ui\UiResponse;
@@ -238,6 +239,25 @@ final class Plugin
         $username = $request->hostingAccountUsername();
 
         return $username === null ? $this->client() : $this->client($username);
+    }
+
+    /**
+     * Where this plugin keeps what it knows about one account.
+     *
+     * Settings are the operator's and apply to the whole plugin; this is the
+     * other kind of state, the kind a page accumulates for the customer
+     * looking at it. Pass the request and it is scoped to that account; pass
+     * nothing and it is the plugin's own.
+     */
+    public function store(HookRequest|UiRequest|null $request = null): Store
+    {
+        $account = match (true) {
+            $request instanceof UiRequest => $request->hostingAccountUsername(),
+            $request instanceof HookRequest => $request->hostingAccountUsername(),
+            default => null,
+        };
+
+        return Store::forAccount($this->config->path('data'), $account);
     }
 
     public function config(): Config

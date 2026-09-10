@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AdminBolt\Plugin\Api\Resource;
 
 use AdminBolt\Plugin\Api\ApiClient;
+use AdminBolt\Plugin\Exception\ApiException;
 use AdminBolt\Plugin\Support\Arr;
 
 /**
@@ -52,6 +53,62 @@ final class Files extends Resource
     public function stat(string $path): array
     {
         return $this->client->get('files/stat', ['path' => $path]);
+    }
+
+    /**
+     * The contents of a file, as a string.
+     *
+     * The panel has served this since the file manager did; the SDK simply
+     * never wrapped it, which left a plugin able to write a .env it could not
+     * read back.
+     */
+    public function read(string $path): string
+    {
+        return $this->client->contents('files/download', ['path' => $path]);
+    }
+
+    /**
+     * Whether a path exists, without an exception when it does not.
+     *
+     * A plugin looking for an application asks this about a dozen candidates,
+     * and stat() throwing is the wrong shape for a question.
+     */
+    public function exists(string $path): bool
+    {
+        try {
+            $this->stat($path);
+
+            return true;
+        } catch (ApiException $e) {
+            if ($e->status === 404 || $e->status === 422 || $e->status === 403) {
+                return false;
+            }
+
+            throw $e;
+        }
+    }
+
+    /** @return array<mixed> */
+    public function symlink(string $target, string $link): array
+    {
+        return $this->client->post('files/symlink', [
+            'target' => $target,
+            'link' => $link,
+        ]);
+    }
+
+    /**
+     * Fetch a URL straight into the account, without it passing through the
+     * plugin.
+     *
+     * @return array<mixed>
+     */
+    public function fetchUrl(string $url, string $destination): array
+    {
+        return $this->client->post('files/fetch-url', [
+            'url' => $url,
+            'destination' => $destination,
+        ]);
     }
 
     /** @return array<mixed> */
