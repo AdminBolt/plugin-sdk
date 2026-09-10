@@ -158,6 +158,34 @@ final class ManifestTest extends TestCase
         ])));
     }
 
+    public function test_a_frame_can_say_how_it_wants_to_be_sized(): void
+    {
+        self::assertSame([], Manifest::validate($this->valid([
+            'ui' => [[
+                'panel' => 'client', 'slug' => 'console', 'title' => 'Console',
+                'render' => 'iframe', 'height' => 'auto', 'edge_to_edge' => true, 'width' => 'full',
+            ]],
+        ])));
+
+        $errors = Manifest::validate($this->valid([
+            'ui' => [['panel' => 'client', 'slug' => 'console', 'title' => 'Console', 'render' => 'iframe', 'height' => 'tall']],
+        ]));
+
+        self::assertStringContainsString('height must be', $errors[0]);
+    }
+
+    public function test_a_declarative_page_cannot_size_a_frame_it_does_not_have(): void
+    {
+        // The panel draws a declarative page with its own components and
+        // decides how tall they are. Accepting a size would be accepting a
+        // setting that does nothing.
+        $errors = Manifest::validate($this->valid([
+            'ui' => [['panel' => 'client', 'slug' => 'console', 'title' => 'Console', 'height' => 'auto']],
+        ]));
+
+        self::assertStringContainsString('only a page with "render": "iframe" has a frame', $errors[0]);
+    }
+
     public function test_a_manifest_still_naming_a_path_is_told_it_does_nothing(): void
     {
         // The field was accepted and ignored, which is the worst of both: a

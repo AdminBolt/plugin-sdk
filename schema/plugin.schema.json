@@ -309,6 +309,27 @@
                     "sort": {
                         "type": "integer",
                         "description": "Position within the navigation group."
+                    },
+                    "height": {
+                        "enum": [
+                            "fill",
+                            "auto"
+                        ],
+                        "default": "fill",
+                        "description": "Only for \"render\": \"iframe\". \"fill\" gives the frame the height the panel has and lets it scroll inside; \"auto\" grows the frame to its content and lets the page scroll instead, which needs the front end to report its height."
+                    },
+                    "edge_to_edge": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Only for \"render\": \"iframe\". Drops the card the frame sits in so it spans the page, for a front end that draws its own edges."
+                    },
+                    "width": {
+                        "enum": [
+                            "default",
+                            "full"
+                        ],
+                        "default": "default",
+                        "description": "Only for \"render\": \"iframe\". \"default\" is the width the panel centres its own pages at; \"full\" is everything between the navigation and the edge of the window."
                     }
                 }
             }

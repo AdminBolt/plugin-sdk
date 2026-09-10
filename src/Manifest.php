@@ -333,6 +333,31 @@ final class Manifest
                     . 'or "iframe" (the plugin serves its own HTML, which the panel proxies).';
             }
 
+            $height = $page['height'] ?? 'fill';
+
+            if (!in_array($height, ['fill', 'auto'], true)) {
+                $errors[] = $label . '.height must be "fill" (the frame takes the height the panel gives it and scrolls inside) '
+                    . 'or "auto" (the frame reports its own height and the page scrolls instead).';
+            }
+
+            if (isset($page['edge_to_edge']) && !is_bool($page['edge_to_edge'])) {
+                $errors[] = $label . '.edge_to_edge must be true or false.';
+            }
+
+            $width = $page['width'] ?? 'default';
+
+            if (!in_array($width, ['default', 'full'], true)) {
+                $errors[] = $label . '.width must be "default" (the width the panel centres its own pages at) '
+                    . 'or "full" (everything between the navigation and the edge of the window).';
+            }
+
+            if ($render !== 'iframe' && (isset($page['height']) || isset($page['edge_to_edge']) || isset($page['width']))) {
+                // A declarative page is drawn by the panel, which decides how
+                // tall its components are. Accepting a size for one would be
+                // accepting a setting that does nothing.
+                $errors[] = $label . ' sets a frame size, but only a page with "render": "iframe" has a frame.';
+            }
+
             // A page's front end is served at /ui/{slug} on the plugin's
             // listener, and the panel proxies exactly that. There is nothing
             // to configure, and a path that could be configured would be a
