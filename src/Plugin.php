@@ -163,6 +163,27 @@ final class Plugin
         return $this;
     }
 
+    /**
+     * Serve a built front end for a page, instead of describing one.
+     *
+     * For the rare page the panel's components cannot express: output that
+     * streams while something runs, a canvas, an editor. The manifest entry
+     * for the page has to declare "render": "iframe", and the two have to
+     * agree or the panel asks for a description this plugin will not send.
+     *
+     *     $plugin->app('console', __DIR__ . '/../ui/dist');
+     *
+     * What is given up is everything the declarative path does for free: the
+     * operator's theme, dark mode, the phone layout, translation, and having
+     * no markup to escape.
+     */
+    public function app(string $slug, string $directory): self
+    {
+        $this->ui->app($slug, $directory);
+
+        return $this;
+    }
+
     public function ui(): UiRouter
     {
         return $this->ui;

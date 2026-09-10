@@ -23,6 +23,9 @@ final class UiRouter
     /** @var array<string, callable(UiRequest): UiResponse> */
     private array $actions = [];
 
+    /** @var array<string, AppBundle> */
+    private array $apps = [];
+
     public function __construct(private readonly Logger $logger = new NullLogger())
     {
     }
@@ -42,6 +45,37 @@ final class UiRouter
         $this->pages[$slug] = $handler;
 
         return $this;
+    }
+
+    /**
+     * Serve a built front end for a page instead of a description of one.
+     *
+     * The page's manifest entry has to declare "render": "iframe" as well:
+     * that is what tells the panel to embed this rather than ask for a page
+     * description, and the two have to agree or the page renders nothing.
+     */
+    public function app(string $slug, string $directory): self
+    {
+        if (preg_match('/^[a-z][a-z0-9-]*$/', $slug) !== 1) {
+            throw new PluginException(sprintf(
+                'Page slug "%s" must be lower-case kebab-case; it becomes part of the panel URL.',
+                $slug
+            ));
+        }
+
+        $this->apps[$slug] = new AppBundle($directory);
+
+        return $this;
+    }
+
+    public function hasApp(string $slug): bool
+    {
+        return isset($this->apps[$slug]);
+    }
+
+    public function bundle(string $slug): ?AppBundle
+    {
+        return $this->apps[$slug] ?? null;
     }
 
     /**

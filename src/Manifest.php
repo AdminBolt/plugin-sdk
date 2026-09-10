@@ -333,8 +333,13 @@ final class Manifest
                     . 'or "iframe" (the plugin serves its own HTML, which the panel proxies).';
             }
 
-            if ($render === 'iframe' && !isset($page['path'])) {
-                $errors[] = $label . '.path is required for an iframe page: the panel needs to know what to proxy.';
+            // A page's front end is served at /ui/{slug} on the plugin's
+            // listener, and the panel proxies exactly that. There is nothing
+            // to configure, and a path that could be configured would be a
+            // path a plugin could point somewhere unintended.
+            if (isset($page['path'])) {
+                $errors[] = $label . '.path is no longer used. The panel proxies /ui/' . (is_string($slug) ? $slug : '{slug}')
+                    . ' on the plugin, and $plugin->app(\'' . (is_string($slug) ? $slug : 'slug') . '\', ...) is what serves it.';
             }
         }
 

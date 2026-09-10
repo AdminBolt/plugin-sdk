@@ -26,6 +26,9 @@ final class UiResponse implements \JsonSerializable
     /** @var array<string, list<string>> */
     private array $errors = [];
 
+    /** @var array<string, mixed>|null */
+    private ?array $data = null;
+
     private function __construct()
     {
     }
@@ -39,6 +42,27 @@ final class UiResponse implements \JsonSerializable
         $response->message = $message;
         $response->level = $level;
         $response->refresh = true;
+
+        return $response;
+    }
+
+    /**
+     * Answer a front end with data rather than telling the panel to draw
+     * something.
+     *
+     * Only useful to a page the plugin draws itself: a declarative page has
+     * no way to receive this, because its whole point is that the plugin
+     * describes what to draw and the panel decides how. A page served as its
+     * own front end needs the other half, which is somewhere to get its state
+     * from, and this is it.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function data(array $data, ?string $message = null): self
+    {
+        $response = new self();
+        $response->data = $data;
+        $response->message = $message;
 
         return $response;
     }
@@ -130,6 +154,7 @@ final class UiResponse implements \JsonSerializable
             'redirect' => $this->redirect,
             'page' => $this->page,
             'errors' => $this->errors ?: null,
+            'data' => $this->data,
         ], static fn ($value) => $value !== null);
     }
 }

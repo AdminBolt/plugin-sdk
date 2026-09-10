@@ -196,19 +196,69 @@ The panel re-renders every ten seconds. Every poll is a request to the plugin,
 so the floor is five seconds. Use it for something genuinely in progress, not
 as a substitute for a page that reports its own state.
 
-## Iframe pages
+## Pages a plugin draws itself
 
 ```json
-{ "panel": "admin", "slug": "console", "title": "Console", "render": "iframe", "path": "/ui/console" }
+{ "panel": "client", "slug": "console", "title": "Console", "render": "iframe" }
 ```
 
-The panel proxies that path on the plugin's listener and embeds the result. It
-passes the same signed viewer context as a header, so the page still knows who
-is looking without trusting a query parameter.
+```php
+$plugin->app('console', __DIR__ . '/../ui/dist');
+```
 
-You give up native styling, dark mode, mobile layout and the panel's escaping.
-Take that trade only when the components genuinely cannot express what you
-need.
+That is a built front end: a directory with an `index.html` and its assets.
+The panel serves it inside a frame and carries its calls back, so the plugin
+still needs no public port.
+
+There is nothing to configure. The bundle is served at `/ui/{slug}` on the
+plugin's listener and the panel proxies exactly that.
+
+### How it talks back
+
+The frame is **sandboxed out of the panel's origin**. Its scripts cannot read
+the panel's DOM, its cookies or its storage, and it is sent no session cookie.
+What authenticates its calls is a token the panel mints when it draws the
+page, which sits in the frame's own URL.
+
+So the front end calls its actions relatively, and gets the same actions a
+declarative page uses:
+
+```js
+await fetch('./action/scan', { method: 'POST' })
+```
+
+Which needs somewhere to read state from, and that is what `data()` is for:
+
+```php
+$plugin->action('state', fn (UiRequest $request) => UiResponse::data([
+    'applications' => $this->applications($request),
+]));
+```
+
+One request for the whole page rather than one per section: every call is a
+round trip through the panel to the plugin and back.
+
+### Two things to be careful about
+
+**Secrets.** On a declarative page the panel drops a secret field's value
+before it serialises the page. A front end gets exactly what the plugin sends
+it, so masking is the plugin's job. Send whether a password is set, never the
+password.
+
+**Everything else the panel was doing for you.** The operator's theme, dark
+mode, the phone layout, translation, and having no markup to escape. All of
+that is now the plugin's, in a page that sits inside a panel that has already
+made those decisions. Follow `prefers-color-scheme` at the very least.
+
+### When to take the trade
+
+When the components genuinely cannot express it: output that streams while
+something runs, a canvas, an editor. Not because a declarative page is a few
+components short. Adding the component is usually the smaller job, and every
+page that takes it keeps looking like the panel.
+
+Both can be registered at once. `render` in the manifest decides which the
+panel asks for, so switching back is one field.
 
 ## Testing
 

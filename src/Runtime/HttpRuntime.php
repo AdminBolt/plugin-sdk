@@ -30,7 +30,17 @@ use AdminBolt\Plugin\Ui\UiRouter;
  *   POST  /              a hook delivery, signature required
  *   POST  /ui/{slug}     render a panel page, signature required
  *   POST  /ui/{slug}/{action}  run a page action, signature required
+ *   GET   /ui/{slug}/... a file from a built front end, no signature
  *   GET   /health        a liveness probe, signature optional
+ *
+ * The asset GETs are the one unsigned path, and deliberately so. What they
+ * serve is a built bundle: scripts, styles and fonts that ship inside the
+ * plugin and are the same for everybody. Nothing about a viewer reaches them
+ * and nothing they return is anyone's data. Everything that touches data is
+ * still a signed POST carrying the panel's word for who is looking.
+ *
+ * The listener is reachable only through the panel in any case: it binds a
+ * Unix socket, or loopback.
  *
  * A delivery that fails signature verification answers 401 and no handler
  * runs. Everything else answers 200, with the plugin's decision in the body:
@@ -71,6 +81,10 @@ final class HttpRuntime
         $method = strtoupper($method);
 
         if ($method === 'GET') {
+            if (str_starts_with($path, '/ui/')) {
+                return $this->asset($path);
+            }
+
             return $this->health($headers, $body);
         }
 
@@ -116,6 +130,38 @@ final class HttpRuntime
         ]);
 
         return $this->json($response->httpStatus(), $response->jsonSerialize());
+    }
+
+    /**
+     * One file out of a page's built front end.
+     *
+     * The slug comes from the path here, unlike everywhere else in this
+     * class, because there is no signed envelope on an asset request to take
+     * it from. That is safe for the same reason the request is unsigned: the
+     * only thing a slug can select is which bundle directory to read a file
+     * out of, and a bundle a plugin did not register is not there to select.
+     */
+    private function asset(string $path): RuntimeResult
+    {
+        if ($this->ui === null) {
+            return $this->json(404, ['status' => 'error', 'message' => 'This plugin has no panel pages.']);
+        }
+
+        $rest = ltrim(substr($path, strlen('/ui/')), '/');
+        $slug = $rest;
+        $file = '';
+
+        if (str_contains($rest, '/')) {
+            [$slug, $file] = explode('/', $rest, 2);
+        }
+
+        $bundle = $this->ui->bundle($slug);
+
+        if ($bundle === null) {
+            return $this->json(404, ['status' => 'error', 'message' => 'No such page.']);
+        }
+
+        return $bundle->serve($file);
     }
 
     /**

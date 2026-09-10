@@ -148,9 +148,19 @@ embedded in the panel's navigation.
 ```json
 "ui": [
     { "panel": "client", "slug": "backups", "title": "Backups",
-      "icon": "heroicon-o-archive-box", "path": "/ui/client" }
+      "icon": "heroicon-o-archive-box" }
 ]
 ```
+
+| Field | Default | Notes |
+| --- | --- | --- |
+| `panel` | required | `admin`, `client` or `reseller`. The panel enforces it: a page declared for admin is not routable from the client area. |
+| `slug` | required | Lower-case kebab-case. Becomes part of the panel URL. |
+| `title` | required | The navigation entry. |
+| `icon` | no | A Heroicon name. |
+| `group` | no | The navigation group to sit under. |
+| `render` | `declarative` | `declarative` means the plugin describes the page and the panel draws it. `iframe` means the plugin serves a built front end, which the panel embeds. |
+| `sort` | no | Order within the group. |
 
 The panel passes the signed identity of the viewer, so the page knows which
 account it is being viewed for without trusting a query parameter.

@@ -299,17 +299,12 @@
                         "description": "Navigation group to file the page under."
                     },
                     "render": {
-                        "type": "string",
                         "enum": [
                             "declarative",
                             "iframe"
                         ],
                         "default": "declarative",
-                        "description": "declarative: the plugin returns a page description and the panel renders it natively. iframe: the plugin serves its own HTML, which the panel proxies so the plugin needs no public port."
-                    },
-                    "path": {
-                        "type": "string",
-                        "description": "Required for an iframe page: the path on the plugin listener that serves the HTML."
+                        "description": "\"declarative\" means the plugin describes the page and the panel draws it with its own components, which is the right answer almost every time. \"iframe\" means the plugin serves a built front end at /ui/{slug}, which the panel proxies and embeds; it gives up the operator's theme, dark mode, the phone layout and translation."
                     },
                     "sort": {
                         "type": "integer",

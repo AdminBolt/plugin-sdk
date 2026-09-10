@@ -149,18 +149,26 @@ final class ManifestTest extends TestCase
         self::assertStringContainsString('twice', $errors[0]);
     }
 
-    public function test_an_iframe_page_must_say_what_to_proxy(): void
+    public function test_an_iframe_page_is_served_where_the_panel_looks_for_it(): void
     {
-        $errors = Manifest::validate($this->valid([
+        // There is nothing to configure: the front end lives at /ui/{slug} on
+        // the plugin's listener and the panel proxies exactly that.
+        self::assertSame([], Manifest::validate($this->valid([
             'ui' => [['panel' => 'admin', 'slug' => 'console', 'title' => 'Console', 'render' => 'iframe']],
+        ])));
+    }
+
+    public function test_a_manifest_still_naming_a_path_is_told_it_does_nothing(): void
+    {
+        // The field was accepted and ignored, which is the worst of both: a
+        // manifest that validated and a page that did not work.
+        $errors = Manifest::validate($this->valid([
+            'ui' => [['panel' => 'admin', 'slug' => 'console', 'title' => 'Console', 'render' => 'iframe', 'path' => '/ui/console']],
         ]));
 
         self::assertNotSame([], $errors);
-        self::assertStringContainsString('path is required', $errors[0]);
-
-        self::assertSame([], Manifest::validate($this->valid([
-            'ui' => [['panel' => 'admin', 'slug' => 'console', 'title' => 'Console', 'render' => 'iframe', 'path' => '/ui/console']],
-        ])));
+        self::assertStringContainsString('no longer used', $errors[0]);
+        self::assertStringContainsString("app('console'", $errors[0]);
     }
 
     public function test_scopes_must_name_an_api_a_resource_and_an_access_level(): void
