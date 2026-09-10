@@ -92,6 +92,18 @@ Endpoints the panel does not implement say so instead of failing at runtime.
 `$api->databases()->update(...)` throws immediately with the reason: a
 database has no editable fields, so there is no update endpoint.
 
+## Running commands
+
+Separate from the REST resources, and shaped differently on purpose:
+
+```php
+$plugin->clientFor($request)->cli()->run('artisan', ['command' => 'migrate'], cwd: 'shop');
+```
+
+A plugin names a command it declared in its manifest and an administrator
+approved; the panel builds the command line. [commands.md](commands.md) is the
+whole of it.
+
 ## Hooks fire on your own calls
 
 Creating a domain through the API fires `domain.creating` and

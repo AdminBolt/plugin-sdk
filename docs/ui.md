@@ -158,6 +158,7 @@ customer, so a plugin does not have to check.
 | `Section` | a titled card grouping other components |
 | `Alert` | a coloured callout, optionally with a button |
 | `Text` | prose, plain or restricted Markdown |
+| `Output` | what a command printed, with its line breaks kept |
 
 Colours are the panel's semantic names, `primary`, `success`, `warning`,
 `danger`, `info` and `gray`, not hex values. A plugin cannot fight the
@@ -166,6 +167,24 @@ operator's theme or produce something unreadable in dark mode.
 Column types (`badge`, `boolean`, `number`, `dateTime`, `bytes`) tell the panel
 how to format a value. Send an ISO 8601 string for a date and let the panel
 render it in the viewer's timezone and locale.
+
+## Command output
+
+`Output` is for what a program printed. Line breaks and indentation carry the
+meaning, so the panel keeps them, scrolls the block rather than growing the
+page, and can pin it to the newest line while something is still running.
+
+```php
+Output::make($job->output)
+    ->title('Deploy')
+    ->status($job->failed() ? 'danger' : 'success')
+    ->follow()
+    ->lines(24);
+```
+
+Its content is the one thing on a page that did not come from the plugin: it
+came from a command, which means it came from the customer's own application.
+The panel escapes it like everything else.
 
 ## Live pages
 
