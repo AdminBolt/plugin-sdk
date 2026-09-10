@@ -1,0 +1,306 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/AdminBolt/plugin-sdk/main/schema/plugin.schema.json",
+    "title": "AdminBolt plugin manifest",
+    "description": "plugin.json, the file the panel reads before it trusts a plugin.",
+    "type": "object",
+    "required": [
+        "id",
+        "name",
+        "version",
+        "runtime"
+    ],
+    "additionalProperties": false,
+    "properties": {
+        "$schema": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+            "description": "Lower-case kebab-case. Becomes the plugin directory name, the API key label and the hook route."
+        },
+        "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Shown to the operator in the panel."
+        },
+        "version": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+([-+][0-9A-Za-z.-]+)?$",
+            "description": "Semantic version. The panel compares it to decide whether an update is available."
+        },
+        "description": {
+            "type": "string"
+        },
+        "author": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "license": {
+            "type": "string"
+        },
+        "homepage": {
+            "type": "string"
+        },
+        "icon": {
+            "type": "string",
+            "description": "Heroicon name, for example heroicon-o-globe-alt."
+        },
+        "sdk": {
+            "type": "string",
+            "description": "Composer constraint on adminbolt/plugin-sdk, for example ^1.0."
+        },
+        "panel": {
+            "type": "string",
+            "description": "Minimum panel version, for example >=1.9.0. The panel refuses to install a plugin that asks for more than it is."
+        },
+        "runtime": {
+            "type": "object",
+            "required": [
+                "entrypoint"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "php": {
+                    "type": "string",
+                    "description": "PHP constraint, for example ^8.2."
+                },
+                "entrypoint": {
+                    "type": "string",
+                    "description": "PHP file the panel serves or executes, relative to the plugin root."
+                },
+                "transport": {
+                    "type": "string",
+                    "enum": [
+                        "http",
+                        "cli"
+                    ],
+                    "default": "http"
+                },
+                "listen": {
+                    "type": "string",
+                    "description": "Unix socket path or 127.0.0.1:port the listener binds, for transport http. The panel assigns one if omitted."
+                },
+                "memory_limit": {
+                    "type": "string"
+                },
+                "user": {
+                    "type": "string",
+                    "description": "System user the plugin runs as. The panel creates a dedicated unprivileged user by default and refuses root."
+                }
+            }
+        },
+        "api": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "scopes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "pattern": "^(admin|client|reseller):[a-z0-9\\-/*]+:(read|write)$"
+                    },
+                    "description": "What the plugin API key is allowed to reach. The panel mints the key with exactly these endpoints."
+                }
+            }
+        },
+        "hooks": {
+            "type": "array",
+            "items": {
+                "oneOf": [
+                    {
+                        "type": "string",
+                        "enum": [
+                            "before_domain_creation",
+                            "after_domain_creation",
+                            "before_domain_deletion",
+                            "after_domain_deletion",
+                            "after_domain_rename",
+                            "before_account_creation",
+                            "after_account_creation",
+                            "before_account_deletion",
+                            "after_account_deletion",
+                            "after_account_suspension",
+                            "after_account_unsuspension",
+                            "after_account_owner_change",
+                            "before_dns_record_creation",
+                            "after_dns_record_creation",
+                            "after_dns_record_update",
+                            "after_dns_record_deletion",
+                            "before_email_account_creation",
+                            "after_email_account_creation",
+                            "after_email_account_deletion",
+                            "before_database_creation",
+                            "after_database_creation",
+                            "after_database_deletion",
+                            "after_ssl_certificate_issuance",
+                            "after_webserver_switch",
+                            "plugin_installed",
+                            "plugin_settings_updated",
+                            "plugin_uninstalled"
+                        ]
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "event"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "event": {
+                                "type": "string",
+                                "enum": [
+                                    "before_domain_creation",
+                                    "after_domain_creation",
+                                    "before_domain_deletion",
+                                    "after_domain_deletion",
+                                    "after_domain_rename",
+                                    "before_account_creation",
+                                    "after_account_creation",
+                                    "before_account_deletion",
+                                    "after_account_deletion",
+                                    "after_account_suspension",
+                                    "after_account_unsuspension",
+                                    "after_account_owner_change",
+                                    "before_dns_record_creation",
+                                    "after_dns_record_creation",
+                                    "after_dns_record_update",
+                                    "after_dns_record_deletion",
+                                    "before_email_account_creation",
+                                    "after_email_account_creation",
+                                    "after_email_account_deletion",
+                                    "before_database_creation",
+                                    "after_database_creation",
+                                    "after_database_deletion",
+                                    "after_ssl_certificate_issuance",
+                                    "after_webserver_switch",
+                                    "plugin_installed",
+                                    "plugin_settings_updated",
+                                    "plugin_uninstalled"
+                                ]
+                            },
+                            "blocking": {
+                                "type": "boolean",
+                                "default": false,
+                                "description": "Only a before_* hook may block. The panel waits for the answer and honours a rejection."
+                            },
+                            "timeout": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 30,
+                                "default": 5
+                            },
+                            "on_failure": {
+                                "type": "string",
+                                "enum": [
+                                    "open",
+                                    "closed"
+                                ],
+                                "default": "open",
+                                "description": "What the panel does when a blocking hook times out or errors. open proceeds, closed aborts the operation."
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "settings": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "key"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "key": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "string",
+                            "secret",
+                            "bool",
+                            "int",
+                            "select",
+                            "text",
+                            "url"
+                        ],
+                        "default": "string"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "help": {
+                        "type": "string"
+                    },
+                    "required": {
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "default": {
+                        "description": "Not allowed on a secret."
+                    },
+                    "options": {
+                        "type": "object",
+                        "description": "value => label pairs, required for a select."
+                    }
+                }
+            }
+        },
+        "ui": {
+            "type": "array",
+            "description": "Pages the panel renders for this plugin, in an iframe served by the plugin itself.",
+            "items": {
+                "type": "object",
+                "required": [
+                    "panel",
+                    "slug",
+                    "title"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "panel": {
+                        "type": "string",
+                        "enum": [
+                            "admin",
+                            "client",
+                            "reseller"
+                        ]
+                    },
+                    "slug": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9-]*$"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "icon": {
+                        "type": "string"
+                    },
+                    "path": {
+                        "type": "string",
+                        "default": "/ui",
+                        "description": "Path on the plugin listener that serves the page."
+                    },
+                    "group": {
+                        "type": "string",
+                        "description": "Navigation group the page appears under."
+                    }
+                }
+            }
+        }
+    }
+}
