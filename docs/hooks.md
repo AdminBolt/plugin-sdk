@@ -1,15 +1,36 @@
 # Hooks
 
+## Naming
+
+Every hook is `<resource>.<verb>`, and the tense of the verb tells you the
+phase.
+
+| | |
+| --- | --- |
+| `domain.creating` | still happening, and you can stop it |
+| `domain.created` | already happened, and you cannot |
+
+Which hooks may block is a fixed list, not something worked out from the name.
+The tense makes the distinction readable; the list makes it authoritative. Run
+`bolt-plugin hooks` for both.
+
 ## The two families
 
-**`before_*`** runs inside the operation, synchronously, while the panel still
-holds the request. The plugin can veto the operation or adjust an allow-listed
-input. It is on the user's critical path, so the panel caps the timeout and
-applies a failure policy if the plugin is slow or down.
+**Blocking hooks** run inside the operation, synchronously, while the panel
+still holds the request. The plugin can veto the operation or adjust an
+allow-listed input. It is on the user's critical path, so the panel caps the
+timeout and applies a failure policy if the plugin is slow or down. There are
+seven, all present participles.
 
-**`after_*`** runs once the operation has already succeeded. Delivery is queued
-and retried, and the answer is recorded but changes nothing. Rejecting is
-meaningless: the domain already exists. Use it for syncing, billing and audit.
+**Notification hooks** run once the operation has already succeeded. Delivery
+is queued and retried, and the answer is recorded but changes nothing.
+Rejecting is meaningless, because the domain already exists. Use these for
+syncing, billing and audit.
+
+The mistake this naming invites is subscribing to `domain.created` when you
+meant `domain.creating`. That validates cleanly and gives you a plugin that
+silently cannot refuse anything, so `bolt-plugin validate` warns when you
+subscribe to a completed hook whose blocking twin you have not taken.
 
 A hook name is a public API. Names are added and never repurposed, because
 renaming one silently breaks every installed plugin.
@@ -21,7 +42,7 @@ The panel POSTs the envelope, or pipes it to stdin for a `cli` plugin.
 ```http
 POST / HTTP/1.1
 Content-Type: application/json
-X-Bolt-Hook: before_domain_creation
+X-Bolt-Hook: domain.creating
 X-Bolt-Delivery: dlv_01J9Z0C4YQ
 X-Bolt-Timestamp: 1757500000
 X-Bolt-Signature: v1=6f1c...
@@ -31,7 +52,7 @@ X-Bolt-Contract: 1
 
 ```json
 {
-    "hook": "before_domain_creation",
+    "hook": "domain.creating",
     "delivery_id": "dlv_01J9Z0C4YQ",
     "blocking": true,
     "attempt": 1,
@@ -103,14 +124,14 @@ failed".
 
 ## Mutations
 
-A `before_*` hook can change specific inputs. Only these keys, and only for
+A blocking hook can change specific inputs. Only these keys, and only for
 these hooks:
 
 | Hook | Mutable keys |
 | --- | --- |
-| `before_domain_creation` | `php_version`, `document_root` |
-| `before_email_account_creation` | `quota_mb` |
-| `before_account_creation` | `hosting_plan_id` |
+| `domain.creating` | `php_version`, `document_root` |
+| `email_account.creating` | `quota_mb` |
+| `account.creating` | `hosting_plan_id` |
 
 Anything else is refused and logged against the plugin. Accepted mutations are
 re-validated with the same rules that apply to operator input, so a plugin
@@ -119,10 +140,10 @@ person.
 
 ## When a plugin fails
 
-For an `after_*` hook the panel retries with backoff and gives up after the
+For a notification hook the panel retries with backoff and gives up after the
 configured attempts, leaving the failure on the delivery log.
 
-For a `before_*` hook the panel applies the plugin's failure policy, set per
+For a blocking hook the panel applies the plugin's failure policy, set per
 hook in the manifest as `on_failure`:
 
 - **`open`** (default) proceeds with the operation. A broken plugin does not
@@ -148,32 +169,32 @@ Hooks marked blockable can be declared `"blocking": true` and can veto.
 
 | Hook | Blockable | Payload |
 | --- | --- | --- |
-| `before_domain_creation` | yes | `domain`, `domain_type`, `php_version`, `document_root` |
-| `after_domain_creation` | no | the created domain, with `id` |
-| `before_domain_deletion` | yes | the domain about to be removed |
-| `after_domain_deletion` | no | `id`, `domain` |
-| `after_domain_rename` | no | `id`, `from`, `to` |
+| `domain.creating` | yes | `domain`, `domain_type`, `php_version`, `document_root` |
+| `domain.created` | no | the created domain, with `id` |
+| `domain.deleting` | yes | the domain about to be removed |
+| `domain.deleted` | no | `id`, `domain` |
+| `domain.renamed` | no | `id`, `from`, `to` |
 
 ### Hosting accounts
 
 | Hook | Blockable | Payload |
 | --- | --- | --- |
-| `before_account_creation` | yes | `username`, `domain`, `hosting_plan_id`, `email` |
-| `after_account_creation` | no | the created account |
-| `before_account_deletion` | yes | the account about to be removed |
-| `after_account_deletion` | no | `id`, `username` |
-| `after_account_suspension` | no | `id`, `username`, `reason` |
-| `after_account_unsuspension` | no | `id`, `username` |
-| `after_account_owner_change` | no | `id`, `from_owner`, `to_owner` |
+| `account.creating` | yes | `username`, `domain`, `hosting_plan_id`, `email` |
+| `account.created` | no | the created account |
+| `account.deleting` | yes | the account about to be removed |
+| `account.deleted` | no | `id`, `username` |
+| `account.suspended` | no | `id`, `username`, `reason` |
+| `account.unsuspended` | no | `id`, `username` |
+| `account.transferred` | no | `id`, `from_owner`, `to_owner` |
 
 ### DNS
 
 | Hook | Blockable | Payload |
 | --- | --- | --- |
-| `before_dns_record_creation` | yes | `domain_id`, `type`, `name`, `content`, `ttl` |
-| `after_dns_record_creation` | no | the created record |
-| `after_dns_record_update` | no | the record, with `previous` |
-| `after_dns_record_deletion` | no | the removed record |
+| `dns_record.creating` | yes | `domain_id`, `type`, `name`, `content`, `ttl` |
+| `dns_record.created` | no | the created record |
+| `dns_record.updated` | no | the record, with `previous` |
+| `dns_record.deleted` | no | the removed record |
 
 SOA and NS records are managed by the panel and do not fire these hooks.
 
@@ -181,14 +202,14 @@ SOA and NS records are managed by the panel and do not fire these hooks.
 
 | Hook | Blockable | Payload |
 | --- | --- | --- |
-| `before_email_account_creation` | yes | `domain_id`, `email`, `quota_mb` |
-| `after_email_account_creation` | no | the created mailbox |
-| `after_email_account_deletion` | no | `id`, `email` |
-| `before_database_creation` | yes | `name`, `engine` |
-| `after_database_creation` | no | the created database |
-| `after_database_deletion` | no | `id`, `name` |
-| `after_ssl_certificate_issuance` | no | `domain_id`, `domain`, `issuer`, `expires_at` |
-| `after_webserver_switch` | no | `from`, `to` |
+| `email_account.creating` | yes | `domain_id`, `email`, `quota_mb` |
+| `email_account.created` | no | the created mailbox |
+| `email_account.deleted` | no | `id`, `email` |
+| `database.creating` | yes | `name`, `engine` |
+| `database.created` | no | the created database |
+| `database.deleted` | no | `id`, `name` |
+| `certificate.issued` | no | `domain_id`, `domain`, `issuer`, `expires_at` |
+| `webserver.switched` | no | `from`, `to` |
 
 No hook payload ever carries a password, a private key or an API secret. A
 plugin that needs the certificate body reads it back through the API, where
@@ -198,9 +219,9 @@ the request is scoped and audited.
 
 | Hook | When |
 | --- | --- |
-| `plugin_installed` | after install, before the first operational delivery |
-| `plugin_settings_updated` | an operator changed a setting |
-| `plugin_uninstalled` | before the panel removes the files; last chance to clean up externally |
+| `plugin.installed` | after install, before the first operational delivery |
+| `plugin.configured` | an operator changed a setting |
+| `plugin.uninstalled` | before the panel removes the files; last chance to clean up externally |
 
-`plugin_installed` is the right place to provision whatever the plugin needs,
+`plugin.installed` is the right place to provision whatever the plugin needs,
 because it runs once and the API key already works.

@@ -33,8 +33,8 @@ abstract class TestCase extends BaseTestCase
             'version' => '1.0.0',
             'runtime' => ['entrypoint' => 'public/index.php', 'transport' => 'http'],
             'hooks' => [
-                ['event' => Hook::BEFORE_DOMAIN_CREATION, 'blocking' => true],
-                ['event' => Hook::AFTER_DOMAIN_CREATION],
+                ['event' => Hook::DOMAIN_CREATING, 'blocking' => true],
+                ['event' => Hook::DOMAIN_CREATED],
             ],
         ], $overrides));
     }
@@ -45,7 +45,7 @@ abstract class TestCase extends BaseTestCase
         $body = json_encode([
             'hook' => $hook,
             'delivery_id' => 'dlv_test',
-            'blocking' => str_starts_with($hook, 'before_'),
+            'blocking' => Hook::isBlockable($hook),
             'occurred_at' => '2026-09-10T10:00:00+00:00',
             'actor' => ['type' => 'client', 'id' => 7, 'username' => 'acme'],
             'panel' => ['version' => '1.9.0'],

@@ -176,12 +176,7 @@ final class Manifest
             $event = $hook['event'];
 
             if (!Hook::isKnown($event)) {
-                $errors[] = sprintf(
-                    '%s subscribes to "%s", which the panel does not dispatch. Known hooks: %s.',
-                    $label,
-                    $event,
-                    implode(', ', Hook::all())
-                );
+                $errors[] = $label . ' subscribes to "' . $event . '", which the panel does not dispatch. ' . self::hint($event);
             }
 
             if (isset($seen[$event])) {
@@ -196,9 +191,10 @@ final class Manifest
 
             if (($hook['blocking'] ?? false) === true && !Hook::isBlockable($event)) {
                 $errors[] = sprintf(
-                    '%s marks "%s" as blocking, but only before_* hooks run inside the operation and can veto it.',
+                    '%s marks "%s" as blocking, but that hook reports something that already happened. Only these run inside the operation and can veto it: %s.',
                     $label,
-                    $event
+                    $event,
+                    implode(', ', Hook::blockable())
                 );
             }
 
@@ -211,6 +207,21 @@ final class Manifest
         }
 
         return $errors;
+    }
+
+    /**
+     * The most useful thing to say about a hook name that is not real: the
+     * nearest match, rather than all 27 names.
+     */
+    private static function hint(string $event): string
+    {
+        $closest = Hook::closest($event);
+
+        if ($closest !== null) {
+            return sprintf('Did you mean "%s"?', $closest);
+        }
+
+        return sprintf('Known hooks: %s.', implode(', ', Hook::all()));
     }
 
     /** @return list<string> */

@@ -17,11 +17,11 @@ final class HttpRuntimeTest extends TestCase
     {
         $plugin = Plugin::create($this->manifest(), $this->config());
         $plugin->on(
-            Hook::BEFORE_DOMAIN_CREATION,
+            Hook::DOMAIN_CREATING,
             fn (HookRequest $r) => HookResponse::reject('example.test is reserved.')
         );
 
-        [$headers, $body] = $this->delivery(Hook::BEFORE_DOMAIN_CREATION, ['domain' => 'example.test']);
+        [$headers, $body] = $this->delivery(Hook::DOMAIN_CREATING, ['domain' => 'example.test']);
         $result = $plugin->httpRuntime()->handle('POST', '/', $headers, $body);
 
         // 200, not 4xx: a veto is a successful delivery of a negative answer.
@@ -34,9 +34,9 @@ final class HttpRuntimeTest extends TestCase
     public function test_a_handler_can_adjust_an_allow_listed_input(): void
     {
         $plugin = Plugin::create($this->manifest(), $this->config());
-        $plugin->on(Hook::BEFORE_DOMAIN_CREATION, fn () => HookResponse::mutate(['php_version' => '8.3']));
+        $plugin->on(Hook::DOMAIN_CREATING, fn () => HookResponse::mutate(['php_version' => '8.3']));
 
-        [$headers, $body] = $this->delivery(Hook::BEFORE_DOMAIN_CREATION, ['domain' => 'example.com']);
+        [$headers, $body] = $this->delivery(Hook::DOMAIN_CREATING, ['domain' => 'example.com']);
         $result = $plugin->httpRuntime()->handle('POST', '/', $headers, $body);
 
         self::assertSame(['php_version' => '8.3'], $result->json()['mutations']);
@@ -46,13 +46,13 @@ final class HttpRuntimeTest extends TestCase
     {
         $reached = false;
         $plugin = Plugin::create($this->manifest(), $this->config());
-        $plugin->on(Hook::BEFORE_DOMAIN_CREATION, function () use (&$reached) {
+        $plugin->on(Hook::DOMAIN_CREATING, function () use (&$reached) {
             $reached = true;
 
             return HookResponse::ok();
         });
 
-        [, $body] = $this->delivery(Hook::BEFORE_DOMAIN_CREATION, ['domain' => 'example.com']);
+        [, $body] = $this->delivery(Hook::DOMAIN_CREATING, ['domain' => 'example.com']);
         $result = $plugin->httpRuntime()->handle('POST', '/', [], $body);
 
         self::assertSame(401, $result->status);
@@ -62,10 +62,10 @@ final class HttpRuntimeTest extends TestCase
     public function test_a_forged_signature_is_refused(): void
     {
         $plugin = Plugin::create($this->manifest(), $this->config());
-        $plugin->on(Hook::BEFORE_DOMAIN_CREATION, fn () => HookResponse::ok());
+        $plugin->on(Hook::DOMAIN_CREATING, fn () => HookResponse::ok());
 
         [$headers, $body] = $this->delivery(
-            Hook::BEFORE_DOMAIN_CREATION,
+            Hook::DOMAIN_CREATING,
             ['domain' => 'example.com'],
             secret: 'not-the-real-secret'
         );
@@ -82,7 +82,7 @@ final class HttpRuntimeTest extends TestCase
     {
         $plugin = Plugin::create($this->manifest(), $this->config());
 
-        [$headers, $body] = $this->delivery(Hook::AFTER_ACCOUNT_SUSPENSION, ['id' => 7]);
+        [$headers, $body] = $this->delivery(Hook::ACCOUNT_SUSPENDED, ['id' => 7]);
         $result = $plugin->httpRuntime()->handle('POST', '/', $headers, $body);
 
         self::assertSame(200, $result->status);
@@ -92,9 +92,9 @@ final class HttpRuntimeTest extends TestCase
     public function test_a_handler_that_throws_becomes_an_error_response(): void
     {
         $plugin = Plugin::create($this->manifest(), $this->config());
-        $plugin->on(Hook::BEFORE_DOMAIN_CREATION, fn () => throw new \RuntimeException('upstream is down'));
+        $plugin->on(Hook::DOMAIN_CREATING, fn () => throw new \RuntimeException('upstream is down'));
 
-        [$headers, $body] = $this->delivery(Hook::BEFORE_DOMAIN_CREATION, ['domain' => 'example.com']);
+        [$headers, $body] = $this->delivery(Hook::DOMAIN_CREATING, ['domain' => 'example.com']);
         $result = $plugin->httpRuntime()->handle('POST', '/', $headers, $body);
 
         self::assertSame(200, $result->status);
@@ -128,7 +128,7 @@ final class HttpRuntimeTest extends TestCase
     public function test_a_signed_health_probe_reports_the_installed_version(): void
     {
         $plugin = Plugin::create($this->manifest(), $this->config());
-        $plugin->on(Hook::BEFORE_DOMAIN_CREATION, fn () => HookResponse::ok());
+        $plugin->on(Hook::DOMAIN_CREATING, fn () => HookResponse::ok());
 
         $timestamp = time();
         $result = $plugin->httpRuntime()->handle('GET', '/health', [
@@ -137,7 +137,7 @@ final class HttpRuntimeTest extends TestCase
         ], '');
 
         self::assertSame('1.0.0', $result->json()['plugin']['version']);
-        self::assertSame([Hook::BEFORE_DOMAIN_CREATION], $result->json()['handled_hooks']);
+        self::assertSame([Hook::DOMAIN_CREATING], $result->json()['handled_hooks']);
     }
 
     public function test_only_post_and_get_are_accepted(): void

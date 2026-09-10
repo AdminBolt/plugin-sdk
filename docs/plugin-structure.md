@@ -55,7 +55,7 @@ require __DIR__ . '/../vendor/autoload.php';
 
 $plugin = Plugin::boot(__DIR__);
 
-$plugin->on(Hook::BEFORE_DOMAIN_CREATION, function (HookRequest $hook) use ($plugin) {
+$plugin->on(Hook::DOMAIN_CREATING, function (HookRequest $hook) use ($plugin) {
     $domain = (string) $hook->payload('domain');
 
     if (str_ends_with($domain, '.test')) {
@@ -94,7 +94,7 @@ minimal one:
         "scopes": ["client:domains:read"]
     },
     "hooks": [
-        { "event": "before_domain_creation", "blocking": true, "timeout": 5 }
+        { "event": "domain.creating", "blocking": true, "timeout": 5 }
     ],
     "settings": [
         { "key": "blocked_suffixes", "type": "string", "label": "Blocked suffixes", "required": true }
@@ -116,7 +116,7 @@ enough for a blocking hook on the user's critical path.
 
 **`cli`** executes the entrypoint once per delivery, envelope on stdin and
 answer on stdout. It costs a process spawn per hook, so it is the wrong choice
-for a busy `after_*` hook, but it needs no resident process and no port. Set
+for a busy notification hook, but it needs no resident process and no port. Set
 `"transport": "cli"` and change nothing else: the same handlers run.
 
 ## Where a plugin lives
@@ -139,7 +139,7 @@ $token = $plugin->setting('api_token');
 A `secret` setting is write-only in the panel UI: the operator can replace it
 but never read it back. Do not declare a default for one.
 
-Changing a setting fires `plugin_settings_updated`, so a plugin that caches
+Changing a setting fires `plugin.configured`, so a plugin that caches
 derived state can rebuild it.
 
 ## Testing a plugin

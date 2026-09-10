@@ -35,20 +35,20 @@ final class ManifestTest extends TestCase
         self::assertSame([], Manifest::validate($this->valid(['id' => 'acme-widgets-2'])));
     }
 
-    public function test_an_after_hook_cannot_be_blocking(): void
+    public function test_a_completed_hook_cannot_be_blocking(): void
     {
         $errors = Manifest::validate($this->valid([
-            'hooks' => [['event' => Hook::AFTER_DOMAIN_CREATION, 'blocking' => true]],
+            'hooks' => [['event' => Hook::DOMAIN_CREATED, 'blocking' => true]],
         ]));
 
         self::assertNotSame([], $errors);
-        self::assertStringContainsString('only before_* hooks', $errors[0]);
+        self::assertStringContainsString('already happened', $errors[0]);
     }
 
     public function test_a_blocking_timeout_is_capped(): void
     {
         $errors = Manifest::validate($this->valid([
-            'hooks' => [['event' => Hook::BEFORE_DOMAIN_CREATION, 'blocking' => true, 'timeout' => 600]],
+            'hooks' => [['event' => Hook::DOMAIN_CREATING, 'blocking' => true, 'timeout' => 600]],
         ]));
 
         self::assertNotSame([], $errors);
@@ -87,13 +87,13 @@ final class ManifestTest extends TestCase
     public function test_hooks_normalise_to_objects_with_defaults(): void
     {
         $manifest = Manifest::fromArray($this->valid([
-            'hooks' => [Hook::AFTER_DOMAIN_CREATION, ['event' => Hook::BEFORE_DOMAIN_CREATION, 'blocking' => true, 'timeout' => 3]],
+            'hooks' => [Hook::DOMAIN_CREATED, ['event' => Hook::DOMAIN_CREATING, 'blocking' => true, 'timeout' => 3]],
         ]));
 
         self::assertSame(
             [
-                ['event' => Hook::AFTER_DOMAIN_CREATION, 'blocking' => false, 'timeout' => 5],
-                ['event' => Hook::BEFORE_DOMAIN_CREATION, 'blocking' => true, 'timeout' => 3],
+                ['event' => Hook::DOMAIN_CREATED, 'blocking' => false, 'timeout' => 5],
+                ['event' => Hook::DOMAIN_CREATING, 'blocking' => true, 'timeout' => 3],
             ],
             $manifest->hooks()
         );

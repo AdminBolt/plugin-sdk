@@ -10,7 +10,7 @@ namespace AdminBolt\Plugin\Api\Resource;
  * The admin API exposes them at hosting-account/domains and the client API at
  * client/domains; both speak the same shape, so the path is injected and one
  * class serves both. Creating a domain through this resource fires the same
- * before_domain_creation and after_domain_creation hooks as the panel UI,
+ * domain.creating and domain.created hooks as the panel UI,
  * including for the plugin that made the call.
  */
 final class Domains extends Resource

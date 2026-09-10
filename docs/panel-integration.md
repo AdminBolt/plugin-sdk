@@ -9,7 +9,7 @@ host in bolt-panel. Plugin authors do not need it.
    transport, listen address, enabled, failure policy, hook secret, api_key_id.
 2. **An installer.** Fetch, validate the manifest, create the system user,
    create the directory, mint the API key, write `runtime.json`, register the
-   declared hooks, start the listener, deliver `plugin_installed`.
+   declared hooks, start the listener, deliver `plugin.installed`.
 3. **A dispatcher.** Turns a panel event into a signed delivery.
 4. **A UI.** Install, configure, enable and disable, plus the delivery log.
 
@@ -28,23 +28,23 @@ Rotate the key and the hook secret on demand and on every upgrade. Rewrite
 `runtime.json` afterwards, and sign with both secrets during the overlap so
 in-flight deliveries do not fail.
 
-## Dispatching after_* hooks
+## Dispatching notification hooks
 
 Most of these already exist as events. The bridge is one subscriber that maps
 an event to a delivery:
 
 | Hook | Existing event |
 | --- | --- |
-| `after_domain_creation` | `DomainProvisioned` |
-| `after_domain_deletion` | `DomainWasDeleted` |
-| `after_domain_rename` | `HostingAccountDomainRenamed` |
-| `after_account_creation` | `HostingAccountProvisioned` |
-| `after_account_deletion` | `HostingAccountDeleted` |
-| `after_account_owner_change` | `HostingAccountOwnerChanged` |
-| `after_dns_record_creation` | `DnsRecordCreated` |
-| `after_dns_record_update` | `DnsRecordUpdated` |
-| `after_dns_record_deletion` | `DnsRecordDeleted` |
-| `after_webserver_switch` | `WebServerSwitched` |
+| `domain.created` | `DomainProvisioned` |
+| `domain.deleted` | `DomainWasDeleted` |
+| `domain.renamed` | `HostingAccountDomainRenamed` |
+| `account.created` | `HostingAccountProvisioned` |
+| `account.deleted` | `HostingAccountDeleted` |
+| `account.transferred` | `HostingAccountOwnerChanged` |
+| `dns_record.created` | `DnsRecordCreated` |
+| `dns_record.updated` | `DnsRecordUpdated` |
+| `dns_record.deleted` | `DnsRecordDeleted` |
+| `webserver.switched` | `WebServerSwitched` |
 
 Delivery is queued, never inline. These events already run inside completed
 operations that must not fail, and an HTTP call to a plugin is exactly the
@@ -53,7 +53,7 @@ kind of thing that would break them.
 Suspension, email, database and TLS hooks need new events, following the same
 shape as the existing ones.
 
-## Dispatching before_* hooks
+## Dispatching blocking hooks
 
 These are new dispatch points, and they go in the service, not the controller,
 so that the API, the UI and the CLI all fire them.
@@ -84,7 +84,7 @@ Sign the exact bytes sent. During rotation send both, comma separated.
 Include `X-Bolt-Delivery` and keep it stable across retries: plugins key their
 idempotency on it.
 
-## Retrying after_* hooks
+## Retrying notification hooks
 
 Exponential backoff, a handful of attempts, then park the delivery in the log.
 Disable a plugin automatically only after sustained failure, and say so
@@ -105,7 +105,7 @@ sits outside that boundary, not inside it.
 
 The integrations already carried in the panel are the natural first plugins.
 Each is a listener bridging a panel event to a third-party service, which is
-exactly the shape of an `after_*` plugin:
+exactly the shape of a notification plugin:
 
 | Listener | Becomes |
 | --- | --- |

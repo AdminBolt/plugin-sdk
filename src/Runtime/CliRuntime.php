@@ -18,9 +18,9 @@ use AdminBolt\Plugin\Support\Json;
  * The alternative transport: the panel executes the plugin once per delivery.
  *
  * Chosen with "runtime": {"transport": "cli"} in plugin.json. It costs a
- * process spawn per hook, so it is the wrong choice for a busy after_* hook,
- * but it needs no long-running listener and no port, which suits a plugin
- * that runs rarely or that an operator would rather not leave resident.
+ * process spawn per hook, so it is the wrong choice for a busy notification
+ * hook, but it needs no long-running listener and no port, which suits a
+ * plugin that runs rarely or that an operator would rather not leave resident.
  *
  * The envelope arrives on stdin. The signature travels in the environment
  * rather than in argv, because argv is world-readable in the process list.

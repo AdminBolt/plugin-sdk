@@ -12,7 +12,7 @@ final class SignatureTest extends TestCase
 {
     public function test_it_accepts_a_signature_it_produced(): void
     {
-        $body = '{"hook":"after_domain_creation"}';
+        $body = '{"hook":"domain.created"}';
         $now = 1_757_500_000;
 
         Signature::verify('s3cret', Signature::compute('s3cret', $now, $body), $now, $body, 300, $now);
@@ -33,7 +33,7 @@ final class SignatureTest extends TestCase
     public function test_it_rejects_a_signature_made_with_another_secret(): void
     {
         $now = 1_757_500_000;
-        $body = '{"hook":"before_domain_creation"}';
+        $body = '{"hook":"domain.creating"}';
 
         $this->expectException(SignatureException::class);
 
@@ -47,7 +47,7 @@ final class SignatureTest extends TestCase
     public function test_it_rejects_a_replayed_delivery(): void
     {
         $signedAt = 1_757_500_000;
-        $body = '{"hook":"before_domain_creation"}';
+        $body = '{"hook":"domain.creating"}';
         $signature = Signature::compute('s3cret', $signedAt, $body);
 
         $this->expectException(SignatureException::class);
@@ -59,7 +59,7 @@ final class SignatureTest extends TestCase
     public function test_it_accepts_either_signature_during_a_secret_rotation(): void
     {
         $now = 1_757_500_000;
-        $body = '{"hook":"after_domain_creation"}';
+        $body = '{"hook":"domain.created"}';
         $header = Signature::compute('old-secret', $now, $body) . ',' . Signature::compute('new-secret', $now, $body);
 
         Signature::verify('new-secret', $header, $now, $body, 300, $now);

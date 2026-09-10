@@ -36,10 +36,16 @@ final class Dispatcher
     public function on(string $hook, callable $handler): self
     {
         if (!Hook::isKnown($hook)) {
+            $closest = Hook::closest($hook);
+
+            $hint = $closest !== null
+                ? sprintf('Did you mean "%s"?', $closest)
+                : sprintf('Known hooks: %s.', implode(', ', Hook::all()));
+
             throw new PluginException(sprintf(
-                'Unknown hook "%s". The panel never dispatches it, so this handler would be dead code. Known hooks: %s.',
+                'Unknown hook "%s". The panel never dispatches it, so this handler would be dead code. %s',
                 $hook,
-                implode(', ', Hook::all())
+                $hint
             ));
         }
 

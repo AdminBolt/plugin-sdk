@@ -14,7 +14,7 @@ use AdminBolt\Plugin\Tests\TestCase;
 
 final class DispatcherTest extends TestCase
 {
-    private function request(string $hook = Hook::BEFORE_DOMAIN_CREATION, array $payload = []): HookRequest
+    private function request(string $hook = Hook::DOMAIN_CREATING, array $payload = []): HookRequest
     {
         return HookRequest::fromArray([
             'hook' => $hook,
@@ -29,8 +29,8 @@ final class DispatcherTest extends TestCase
         $secondRan = false;
         $dispatcher = new Dispatcher();
 
-        $dispatcher->on(Hook::BEFORE_DOMAIN_CREATION, fn () => HookResponse::reject('policy says no'));
-        $dispatcher->on(Hook::BEFORE_DOMAIN_CREATION, function () use (&$secondRan) {
+        $dispatcher->on(Hook::DOMAIN_CREATING, fn () => HookResponse::reject('policy says no'));
+        $dispatcher->on(Hook::DOMAIN_CREATING, function () use (&$secondRan) {
             $secondRan = true;
 
             return HookResponse::ok();
@@ -45,8 +45,8 @@ final class DispatcherTest extends TestCase
     public function test_mutations_from_several_handlers_merge(): void
     {
         $dispatcher = new Dispatcher();
-        $dispatcher->on(Hook::BEFORE_DOMAIN_CREATION, fn () => HookResponse::mutate(['php_version' => '8.3']));
-        $dispatcher->on(Hook::BEFORE_DOMAIN_CREATION, fn () => HookResponse::mutate(['document_root' => 'public']));
+        $dispatcher->on(Hook::DOMAIN_CREATING, fn () => HookResponse::mutate(['php_version' => '8.3']));
+        $dispatcher->on(Hook::DOMAIN_CREATING, fn () => HookResponse::mutate(['document_root' => 'public']));
 
         $response = $dispatcher->dispatch($this->request());
 
@@ -56,8 +56,8 @@ final class DispatcherTest extends TestCase
     public function test_one_failing_handler_does_not_stop_the_others(): void
     {
         $dispatcher = new Dispatcher();
-        $dispatcher->on(Hook::BEFORE_DOMAIN_CREATION, fn () => throw new \RuntimeException('boom'));
-        $dispatcher->on(Hook::BEFORE_DOMAIN_CREATION, fn () => HookResponse::mutate(['php_version' => '8.3']));
+        $dispatcher->on(Hook::DOMAIN_CREATING, fn () => throw new \RuntimeException('boom'));
+        $dispatcher->on(Hook::DOMAIN_CREATING, fn () => HookResponse::mutate(['php_version' => '8.3']));
 
         $response = $dispatcher->dispatch($this->request());
 
@@ -69,7 +69,7 @@ final class DispatcherTest extends TestCase
         $this->expectException(PluginException::class);
         $this->expectExceptionMessageMatches('/Unknown hook/');
 
-        (new Dispatcher())->on('after_the_heat_death_of_the_universe', fn () => HookResponse::ok());
+        (new Dispatcher())->on('domain.combusted', fn () => HookResponse::ok());
     }
 
     public function test_a_handler_object_subscribes_to_every_hook_it_names(): void
@@ -77,7 +77,7 @@ final class DispatcherTest extends TestCase
         $handler = new class () implements HookHandler {
             public function hooks(): array
             {
-                return [Hook::BEFORE_DOMAIN_CREATION, Hook::AFTER_DOMAIN_CREATION];
+                return [Hook::DOMAIN_CREATING, Hook::DOMAIN_CREATED];
             }
 
             public function handle(HookRequest $request): HookResponse
@@ -88,11 +88,11 @@ final class DispatcherTest extends TestCase
 
         $dispatcher = (new Dispatcher())->register($handler);
 
-        self::assertTrue($dispatcher->handles(Hook::BEFORE_DOMAIN_CREATION));
-        self::assertTrue($dispatcher->handles(Hook::AFTER_DOMAIN_CREATION));
+        self::assertTrue($dispatcher->handles(Hook::DOMAIN_CREATING));
+        self::assertTrue($dispatcher->handles(Hook::DOMAIN_CREATED));
         self::assertSame(
-            ['hook' => Hook::AFTER_DOMAIN_CREATION],
-            $dispatcher->dispatch($this->request(Hook::AFTER_DOMAIN_CREATION))->data
+            ['hook' => Hook::DOMAIN_CREATED],
+            $dispatcher->dispatch($this->request(Hook::DOMAIN_CREATED))->data
         );
     }
 
@@ -100,7 +100,7 @@ final class DispatcherTest extends TestCase
     {
         $seen = null;
         $dispatcher = new Dispatcher();
-        $dispatcher->on(Hook::BEFORE_DOMAIN_CREATION, fn () => HookResponse::reject('no'));
+        $dispatcher->on(Hook::DOMAIN_CREATING, fn () => HookResponse::reject('no'));
         $dispatcher->observe(function (HookRequest $r, HookResponse $response) use (&$seen) {
             $seen = $response->status;
 
@@ -114,9 +114,9 @@ final class DispatcherTest extends TestCase
     public function test_a_failing_observer_does_not_break_the_delivery(): void
     {
         $dispatcher = new Dispatcher();
-        $dispatcher->on(Hook::AFTER_DOMAIN_CREATION, fn () => HookResponse::ok());
+        $dispatcher->on(Hook::DOMAIN_CREATED, fn () => HookResponse::ok());
         $dispatcher->observe(fn () => throw new \RuntimeException('metrics backend down'));
 
-        self::assertSame('ok', $dispatcher->dispatch($this->request(Hook::AFTER_DOMAIN_CREATION))->status);
+        self::assertSame('ok', $dispatcher->dispatch($this->request(Hook::DOMAIN_CREATED))->status);
     }
 }

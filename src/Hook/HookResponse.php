@@ -35,7 +35,7 @@ final class HookResponse implements \JsonSerializable
     }
 
     /**
-     * The operation may proceed. The only valid answer from an after_* hook.
+     * The operation may proceed. The only valid answer from a notification hook.
      *
      * @param array<string, mixed> $data
      */
@@ -45,7 +45,7 @@ final class HookResponse implements \JsonSerializable
     }
 
     /**
-     * Veto the operation. Only meaningful from a blocking before_* hook.
+     * Veto the operation. Only meaningful from a blocking hook.
      *
      * The message is shown to whoever triggered the operation, so write it for
      * them: "example.com is not on the allow list for this reseller" rather

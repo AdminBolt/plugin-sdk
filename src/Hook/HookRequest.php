@@ -98,14 +98,30 @@ final class HookRequest
         return is_string($username) && $username !== '' ? $username : null;
     }
 
-    public function isBefore(): bool
+    /**
+     * Whether this delivery is running inside the operation, and so can still
+     * stop it.
+     */
+    public function isBlocking(): bool
     {
-        return str_starts_with($this->hook, 'before_');
+        return Hook::isBlockable($this->hook);
     }
 
-    public function isAfter(): bool
+    /**
+     * Whether this delivery reports something that already happened, and so
+     * cannot be refused.
+     */
+    public function isNotification(): bool
     {
-        return str_starts_with($this->hook, 'after_');
+        return !Hook::isBlockable($this->hook) && !Hook::isLifecycle($this->hook);
+    }
+
+    /**
+     * The resource this hook is about: "domain" for domain.created.
+     */
+    public function resource(): string
+    {
+        return Hook::resource($this->hook);
     }
 
     /**

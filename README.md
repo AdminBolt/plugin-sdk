@@ -31,7 +31,7 @@ require __DIR__ . '/../vendor/autoload.php';
 $plugin = Plugin::boot(__DIR__);
 
 // Runs inside the operation and can stop it.
-$plugin->on(Hook::BEFORE_DOMAIN_CREATION, function (HookRequest $hook) {
+$plugin->on(Hook::DOMAIN_CREATING, function (HookRequest $hook) {
     if (str_ends_with((string) $hook->payload('domain'), '.test')) {
         return HookResponse::reject('.test domains cannot be hosted here.');
     }
@@ -40,7 +40,7 @@ $plugin->on(Hook::BEFORE_DOMAIN_CREATION, function (HookRequest $hook) {
 });
 
 // Runs after it succeeded, and calls back into the panel.
-$plugin->on(Hook::AFTER_DOMAIN_CREATION, function (HookRequest $hook) use ($plugin) {
+$plugin->on(Hook::DOMAIN_CREATED, function (HookRequest $hook) use ($plugin) {
     $plugin->clientFor($hook)->dnsRecords()->createRecord(
         domainId: (int) $hook->payload('id'),
         type: 'TXT',
@@ -66,7 +66,7 @@ Or scaffold one with the CLI:
 ```
 bolt-plugin new my-plugin
 bolt-plugin validate
-bolt-plugin hook before_domain_creation --payload='{"domain":"example.test"}'
+bolt-plugin hook domain.creating --payload='{"domain":"example.test"}'
 ```
 
 ## Documentation
@@ -79,13 +79,15 @@ bolt-plugin hook before_domain_creation --payload='{"domain":"example.test"}'
 
 ## Hooks in one paragraph
 
-`before_*` hooks run inside the operation and can veto it with a message the
-user sees, or adjust an allow-listed input. `after_*` hooks run once it has
-succeeded, are queued and retried, and cannot change anything. Every delivery
-is HMAC signed over the raw body with the timestamp inside the signed string,
-so a captured delivery cannot be replayed. A veto is HTTP 200 with
-`"status": "reject"`, never a 4xx, because a 4xx is indistinguishable from a
-broken listener.
+Hooks are `<resource>.<verb>`, and the tense tells you the phase. Blocking
+hooks are present participles like `domain.creating`: they run inside the
+operation and can veto it with a message the user sees, or adjust an
+allow-listed input. Notification hooks are past participles like
+`domain.created`: they run once it has succeeded, are queued and retried, and
+cannot change anything. Every delivery is HMAC signed over the raw body with
+the timestamp inside the signed string, so a captured delivery cannot be
+replayed. A veto is HTTP 200 with `"status": "reject"`, never a 4xx, because a
+4xx is indistinguishable from a broken listener.
 
 The full catalogue is in [docs/hooks.md](docs/hooks.md).
 

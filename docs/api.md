@@ -16,7 +16,7 @@ plugin has a bug, and most plugins only ever act on the account whose
 operation triggered the hook:
 
 ```php
-$plugin->on(Hook::AFTER_DOMAIN_CREATION, function (HookRequest $hook) use ($plugin) {
+$plugin->on(Hook::DOMAIN_CREATED, function (HookRequest $hook) use ($plugin) {
     $plugin->clientFor($hook)->dnsRecords()->createRecord(
         domainId: $hook->payload('id'),
         type: 'TXT',
@@ -94,8 +94,8 @@ database has no editable fields, so there is no update endpoint.
 
 ## Hooks fire on your own calls
 
-Creating a domain through the API fires `before_domain_creation` and
-`after_domain_creation` like any other creation, including for the plugin that
+Creating a domain through the API fires `domain.creating` and
+`domain.created` like any other creation, including for the plugin that
 made the call. A plugin that creates a domain from inside its own
-`after_domain_creation` handler will recurse. Guard with the delivery id or a
+`domain.created` handler will recurse. Guard with the delivery id or a
 marker of your own.

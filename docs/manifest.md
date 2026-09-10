@@ -61,15 +61,15 @@ are shown to the administrator approving the install, so ask for the minimum.
 
 ```json
 "hooks": [
-    "after_domain_creation",
-    { "event": "before_domain_creation", "blocking": true, "timeout": 5, "on_failure": "open" }
+    "domain.created",
+    { "event": "domain.creating", "blocking": true, "timeout": 5, "on_failure": "open" }
 ]
 ```
 
 | Field | Default | Notes |
 | --- | --- | --- |
 | `event` | required | A name from the [catalogue](hooks.md). An unknown one fails validation. |
-| `blocking` | `false` | Only a `before_*` hook may block. |
+| `blocking` | `false` | Only the seven hooks that run inside an operation may block. |
 | `timeout` | `5` | Seconds, 1 to 30. A blocking hook holds up a user-facing operation, so the panel caps it. |
 | `on_failure` | `open` | `open` proceeds when the plugin fails, `closed` aborts the operation. |
 
@@ -124,11 +124,11 @@ account it is being viewed for without trusting a query parameter.
     "runtime": { "php": "^8.2", "entrypoint": "public/index.php", "transport": "http" },
     "api": { "scopes": ["client:dns-records:read", "client:domains:read"] },
     "hooks": [
-        "after_domain_creation",
-        "after_dns_record_creation",
-        "after_dns_record_update",
-        "after_dns_record_deletion",
-        "plugin_settings_updated"
+        "domain.created",
+        "dns_record.created",
+        "dns_record.updated",
+        "dns_record.deleted",
+        "plugin.configured"
     ],
     "settings": [
         { "key": "api_token", "type": "secret", "label": "Cloudflare API token", "required": true },

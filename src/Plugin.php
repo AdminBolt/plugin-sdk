@@ -26,7 +26,7 @@ use AdminBolt\Plugin\Runtime\HttpRuntime;
  *
  *     $plugin = Plugin::boot(__DIR__);
  *
- *     $plugin->on(Hook::BEFORE_DOMAIN_CREATION, function (HookRequest $hook) use ($plugin) {
+ *     $plugin->on(Hook::DOMAIN_CREATING, function (HookRequest $hook) use ($plugin) {
  *         $domain = (string) $hook->payload('domain');
  *
  *         if (str_ends_with($domain, '.test')) {
@@ -94,7 +94,7 @@ final class Plugin
      *
      * The handler receives a {@see HookRequest} and returns a
      * {@see HookResponse}. Returning nothing is the same as returning ok(),
-     * which is what an after_* handler usually wants.
+     * which is what a notification handler usually wants.
      *
      * @param callable(HookRequest): (HookResponse|null) $handler
      */
