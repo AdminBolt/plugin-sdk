@@ -106,6 +106,63 @@ final class ManifestTest extends TestCase
         Manifest::fromArray(['id' => 'ok', 'name' => 'Ok']);
     }
 
+    public function test_a_ui_page_must_name_a_panel_a_slug_and_a_title(): void
+    {
+        self::assertSame([], Manifest::validate($this->valid([
+            'ui' => [['panel' => 'client', 'slug' => 'zones', 'title' => 'Zones']],
+        ])));
+
+        self::assertNotSame([], Manifest::validate($this->valid([
+            'ui' => [['panel' => 'everyone', 'slug' => 'zones', 'title' => 'Zones']],
+        ])));
+
+        self::assertNotSame([], Manifest::validate($this->valid([
+            'ui' => [['panel' => 'client', 'slug' => 'Zones Page', 'title' => 'Zones']],
+        ])));
+
+        self::assertNotSame([], Manifest::validate($this->valid([
+            'ui' => [['panel' => 'client', 'slug' => 'zones']],
+        ])));
+    }
+
+    /**
+     * The same slug on the admin and client panels is a normal thing to want:
+     * an operator view and a customer view of the same feature.
+     */
+    public function test_a_slug_may_repeat_across_panels_but_not_within_one(): void
+    {
+        self::assertSame([], Manifest::validate($this->valid([
+            'ui' => [
+                ['panel' => 'admin', 'slug' => 'zones', 'title' => 'Zones'],
+                ['panel' => 'client', 'slug' => 'zones', 'title' => 'My zones'],
+            ],
+        ])));
+
+        $errors = Manifest::validate($this->valid([
+            'ui' => [
+                ['panel' => 'client', 'slug' => 'zones', 'title' => 'Zones'],
+                ['panel' => 'client', 'slug' => 'zones', 'title' => 'Zones again'],
+            ],
+        ]));
+
+        self::assertNotSame([], $errors);
+        self::assertStringContainsString('twice', $errors[0]);
+    }
+
+    public function test_an_iframe_page_must_say_what_to_proxy(): void
+    {
+        $errors = Manifest::validate($this->valid([
+            'ui' => [['panel' => 'admin', 'slug' => 'console', 'title' => 'Console', 'render' => 'iframe']],
+        ]));
+
+        self::assertNotSame([], $errors);
+        self::assertStringContainsString('path is required', $errors[0]);
+
+        self::assertSame([], Manifest::validate($this->valid([
+            'ui' => [['panel' => 'admin', 'slug' => 'console', 'title' => 'Console', 'render' => 'iframe', 'path' => '/ui/console']],
+        ])));
+    }
+
     public function test_scopes_must_name_an_api_a_resource_and_an_access_level(): void
     {
         self::assertSame([], Manifest::validate($this->valid(['api' => ['scopes' => ['admin:hosting-accounts:read', 'client:dns-records:write']]])));

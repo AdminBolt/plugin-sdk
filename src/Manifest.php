@@ -143,6 +143,7 @@ final class Manifest
         $errors = [...$errors, ...self::validateHooks(Arr::get($data, 'hooks', []))];
         $errors = [...$errors, ...self::validateSettings(Arr::get($data, 'settings', []))];
         $errors = [...$errors, ...self::validateScopes(Arr::get($data, 'api.scopes', []))];
+        $errors = [...$errors, ...self::validateUi(Arr::get($data, 'ui', []))];
 
         return $errors;
     }
@@ -269,6 +270,70 @@ final class Manifest
     }
 
     /** @return list<string> */
+    private static function validateUi(mixed $ui): array
+    {
+        if ($ui === []) {
+            return [];
+        }
+
+        if (!is_array($ui)) {
+            return ['"ui" must be an array of page definitions.'];
+        }
+
+        $errors = [];
+        $seen = [];
+
+        foreach ($ui as $index => $page) {
+            $label = sprintf('ui[%s]', (string) $index);
+
+            if (!is_array($page)) {
+                $errors[] = $label . ' must be an object.';
+                continue;
+            }
+
+            $panel = $page['panel'] ?? null;
+
+            if (!in_array($panel, ['admin', 'client', 'reseller'], true)) {
+                $errors[] = $label . '.panel must be "admin", "client" or "reseller"; it decides who can open the page.';
+            }
+
+            $slug = $page['slug'] ?? null;
+
+            if (!is_string($slug) || preg_match('/^[a-z][a-z0-9-]*$/', $slug) !== 1) {
+                $errors[] = $label . '.slug is required and must be lower-case kebab-case; it becomes part of the panel URL.';
+            } else {
+                // Same slug on two panels is fine and useful, an admin view
+                // and a client view of the same thing. Twice on one panel is
+                // a collision.
+                $key = $panel . '/' . $slug;
+
+                if (isset($seen[$key])) {
+                    $errors[] = sprintf('%s declares slug "%s" on the %s panel twice.', $label, $slug, (string) $panel);
+                }
+
+                $seen[$key] = true;
+            }
+
+            if (!isset($page['title']) || !is_string($page['title']) || trim($page['title']) === '') {
+                $errors[] = $label . '.title is required; it is the navigation entry.';
+            }
+
+            $render = $page['render'] ?? 'declarative';
+
+            if (!in_array($render, ['declarative', 'iframe'], true)) {
+                $errors[] = $label . '.render must be "declarative" (the plugin describes the page and the panel draws it) '
+                    . 'or "iframe" (the plugin serves its own HTML, which the panel proxies).';
+            }
+
+            if ($render === 'iframe' && !isset($page['path'])) {
+                $errors[] = $label . '.path is required for an iframe page: the panel needs to know what to proxy.';
+            }
+        }
+
+        return $errors;
+    }
+
+    /** @return list<string> */
     private static function validateScopes(mixed $scopes): array
     {
         if ($scopes === []) {
@@ -341,6 +406,44 @@ final class Manifest
         return is_array($scopes) ? array_values(array_map('strval', $scopes)) : [];
     }
 
+    /**
+     * Pages the panel puts in its navigation for this plugin.
+     *
+     * @return list<array{panel: string, slug: string, title: string, render: string, icon: ?string, group: ?string, path: ?string}>
+     */
+    public function ui(): array
+    {
+        $ui = $this->raw['ui'] ?? [];
+        $pages = [];
+
+        foreach (is_array($ui) ? $ui : [] as $page) {
+            if (!is_array($page) || !isset($page['slug'], $page['panel'])) {
+                continue;
+            }
+
+            $pages[] = [
+                'panel' => (string) $page['panel'],
+                'slug' => (string) $page['slug'],
+                'title' => (string) ($page['title'] ?? $page['slug']),
+                'render' => (string) ($page['render'] ?? 'declarative'),
+                'icon' => isset($page['icon']) ? (string) $page['icon'] : null,
+                'group' => isset($page['group']) ? (string) $page['group'] : null,
+                'path' => isset($page['path']) ? (string) $page['path'] : null,
+            ];
+        }
+
+        return $pages;
+    }
+
+    /** @return list<string> */
+    public function pageSlugs(): array
+    {
+        return array_values(array_unique(array_map(
+            static fn (array $page): string => $page['slug'],
+            $this->ui()
+        )));
+    }
+
     public function entrypoint(): string
     {
         return (string) Arr::get($this->raw, 'runtime.entrypoint', 'public/index.php');
@@ -370,6 +473,7 @@ final class Manifest
             'version' => $this->version,
             'contract' => self::CONTRACT,
             'hooks' => $this->hooks(),
+            'ui' => $this->ui(),
             'transport' => $this->transport(),
         ];
     }

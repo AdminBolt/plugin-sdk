@@ -90,6 +90,58 @@ Exponential backoff, a handful of attempts, then park the delivery in the log.
 Disable a plugin automatically only after sustained failure, and say so
 loudly: a silently disabled billing plugin is worse than a failing one.
 
+## Rendering plugin pages
+
+Each `ui` entry in a manifest becomes a Filament page registered on the panel
+it names, in the navigation group it names. The `panel` field is the
+authorisation boundary and the panel enforces it: a page declared for admin is
+not routable from the client area, so plugins do not have to check.
+
+For a declarative page the panel POSTs the signed viewer envelope to
+`/ui/{slug}` on the plugin listener, gets a page description back, and renders
+it with native components:
+
+| Description | Filament |
+| --- | --- |
+| `stat` | a stat card in the header row |
+| `table` | a table, with the row actions as row action buttons |
+| `form` | a form schema, submitting to the named action |
+| `section` | a section card |
+| `alert` | a callout |
+| `text` | prose, Markdown through a restricted renderer |
+
+Three rules the renderer has to hold to, because they are what make this safe:
+
+Escape everything. A plugin sends data, never markup, so every string is
+escaped on output and the Markdown renderer runs with raw HTML disabled. A
+plugin that manages to put a script tag in a table cell is a panel bug, not a
+plugin feature.
+
+Honour only the semantic colour names. Anything else is dropped rather than
+passed through to a class or a style attribute.
+
+Invoke only actions that were on the page you rendered. Keep the set of action
+names from the render and check the incoming action against it, so a crafted
+request cannot reach an action the viewer was never offered.
+
+Buttons POST to `/ui/{slug}/{action}` with the submitted values and the
+action's arguments. Apply the result: toast, re-render, redirect or replace.
+
+For an iframe page the panel reverse-proxies `path` on the plugin listener and
+embeds it, with the signed viewer context as a request header. Serve it with a
+frame-ancestors policy naming the panel only, and never expose the plugin
+listener publicly: the proxy is what keeps it reachable only through the panel,
+where the session check already happened.
+
+## The viewer envelope
+
+The same HMAC scheme as a hook delivery, over the same signed string. It
+carries the panel, the viewer, the hosting account in scope, the locale, and
+for an action the submitted input and the action arguments.
+
+Sign it. This envelope is what a plugin scopes its data by, so an unsigned or
+forgeable one is a way to read another account's data through a plugin.
+
 ## Isolation
 
 Each plugin runs as its own unprivileged system user, never root, and never in

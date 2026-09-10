@@ -102,7 +102,8 @@ minimal one:
 }
 ```
 
-Field by field in [manifest.md](manifest.md). Validate one before you ship it:
+Field by field in [manifest.md](manifest.md), and pages in [ui.md](ui.md).
+Validate one before you ship it:
 
 ```
 bolt-plugin validate

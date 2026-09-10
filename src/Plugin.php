@@ -18,6 +18,10 @@ use AdminBolt\Plugin\Logging\Logger;
 use AdminBolt\Plugin\Logging\NullLogger;
 use AdminBolt\Plugin\Runtime\CliRuntime;
 use AdminBolt\Plugin\Runtime\HttpRuntime;
+use AdminBolt\Plugin\Ui\Page;
+use AdminBolt\Plugin\Ui\UiRequest;
+use AdminBolt\Plugin\Ui\UiResponse;
+use AdminBolt\Plugin\Ui\UiRouter;
 
 /**
  * A plugin.
@@ -50,13 +54,17 @@ final class Plugin
 
     private ?ClientApi $client = null;
 
+    private readonly UiRouter $ui;
+
     public function __construct(
         private readonly Manifest $manifest,
         private readonly Config $config,
         private readonly Dispatcher $dispatcher,
         private readonly Logger $logger,
         private readonly ?HttpClient $http = null,
+        ?UiRouter $ui = null,
     ) {
+        $this->ui = $ui ?? new UiRouter($logger);
     }
 
     /**
@@ -75,7 +83,7 @@ final class Plugin
         $config = Config::load();
         $logger ??= self::defaultLogger($config);
 
-        return new self($manifest, $config, new Dispatcher($logger), $logger, $http);
+        return new self($manifest, $config, new Dispatcher($logger), $logger, $http, new UiRouter($logger));
     }
 
     /**
@@ -86,7 +94,7 @@ final class Plugin
     {
         $logger ??= new NullLogger();
 
-        return new self($manifest, $config, new Dispatcher($logger), $logger, $http);
+        return new self($manifest, $config, new Dispatcher($logger), $logger, $http, new UiRouter($logger));
     }
 
     /**
@@ -117,6 +125,49 @@ final class Plugin
     }
 
     /**
+     * Add a page to the panel.
+     *
+     * The slug must also appear under "ui" in plugin.json, which is what puts
+     * it in the navigation and decides which panel it belongs to. This
+     * handler supplies what is on it.
+     *
+     *     $plugin->page('overview', fn (UiRequest $request) => Page::make('Cloudflare')
+     *         ->stats(Stat::make('Zones', $this->zoneCount($request)))
+     *         ->add(Table::make()->columns(...)->rows(...)));
+     *
+     * The handler describes the page; the panel renders it with its own
+     * components. Nothing here emits HTML.
+     *
+     * @param callable(UiRequest): Page $handler
+     */
+    public function page(string $slug, callable $handler): self
+    {
+        $this->ui->page($slug, $handler);
+
+        return $this;
+    }
+
+    /**
+     * Handle a button press or a form submission from one of the pages.
+     *
+     * Only registered names are reachable, and the panel will not invoke one
+     * that is not on the page it rendered.
+     *
+     * @param callable(UiRequest): UiResponse $handler
+     */
+    public function action(string $name, callable $handler): self
+    {
+        $this->ui->action($name, $handler);
+
+        return $this;
+    }
+
+    public function ui(): UiRouter
+    {
+        return $this->ui;
+    }
+
+    /**
      * Runs after every delivery, for logging and metrics. Cannot change the
      * outcome.
      *
@@ -135,7 +186,7 @@ final class Plugin
      */
     public function run(): void
     {
-        $this->warnAboutUnhandledHooks();
+        $this->warnAboutGaps();
 
         if ($this->manifest->transport() === 'cli') {
             (new CliRuntime($this->config, $this->dispatcher, $this->logger))->run();
@@ -146,7 +197,7 @@ final class Plugin
 
     public function httpRuntime(): HttpRuntime
     {
-        return new HttpRuntime($this->config, $this->manifest, $this->dispatcher, $this->logger);
+        return new HttpRuntime($this->config, $this->manifest, $this->dispatcher, $this->logger, $this->ui);
     }
 
     /**
@@ -175,10 +226,14 @@ final class Plugin
     }
 
     /**
-     * The client API scoped to the account a hook delivery concerns. The
-     * usual way to act on the account that triggered the hook.
+     * The client API scoped to the account a request concerns.
+     *
+     * Takes a hook delivery or a page request, because both carry the account
+     * in the panel's signed envelope and both want the same thing: act on
+     * that account and no other. This is the safe default, and the reason a
+     * plugin should almost never name an account itself.
      */
-    public function clientFor(HookRequest $request): ClientApi
+    public function clientFor(HookRequest|UiRequest $request): ClientApi
     {
         $username = $request->hostingAccountUsername();
 
@@ -214,12 +269,15 @@ final class Plugin
     }
 
     /**
-     * A manifest that subscribes to a hook nothing handles is almost always a
-     * mistake, and it is silent otherwise: the panel keeps delivering and the
-     * plugin keeps acknowledging. Logged once at startup rather than thrown,
-     * since a half-finished plugin should still boot.
+     * Mismatches between what the manifest promises and what the plugin
+     * actually registered.
+     *
+     * Every one of these is silent at runtime: the panel keeps delivering a
+     * hook nothing handles, or puts a page in the menu that opens onto an
+     * error. Logged at startup rather than thrown, since a half-finished
+     * plugin should still boot.
      */
-    private function warnAboutUnhandledHooks(): void
+    private function warnAboutGaps(): void
     {
         $unhandled = array_diff($this->manifest->hookNames(), $this->dispatcher->registeredHooks());
 
@@ -236,6 +294,32 @@ final class Plugin
             // handlers will never run.
             $this->logger->warning('Handlers registered for hooks the manifest does not declare; the panel will not deliver them', [
                 'hooks' => array_values($undeclared),
+            ]);
+        }
+
+        // A page in the navigation with nothing behind it is a menu entry
+        // that opens onto an error, which is worse than no menu entry.
+        $declaredPages = array_filter(
+            $this->manifest->ui(),
+            static fn (array $page): bool => $page['render'] !== 'iframe'
+        );
+        $missingPages = array_diff(
+            array_map(static fn (array $page): string => $page['slug'], $declaredPages),
+            $this->ui->pageSlugs()
+        );
+
+        if ($missingPages !== []) {
+            $this->logger->warning('Manifest declares panel pages with no handler registered', [
+                'pages' => array_values($missingPages),
+            ]);
+        }
+
+        $undeclaredPages = array_diff($this->ui->pageSlugs(), $this->manifest->pageSlugs());
+
+        if ($undeclaredPages !== []) {
+            // Nothing links to them, so nobody will ever open them.
+            $this->logger->warning('Pages registered that the manifest does not declare; they will not appear in the panel', [
+                'pages' => array_values($undeclaredPages),
             ]);
         }
     }

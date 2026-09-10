@@ -14,6 +14,8 @@ use AdminBolt\Plugin\Logging\Logger;
 use AdminBolt\Plugin\Logging\NullLogger;
 use AdminBolt\Plugin\Manifest;
 use AdminBolt\Plugin\Support\Json;
+use AdminBolt\Plugin\Ui\UiRequest;
+use AdminBolt\Plugin\Ui\UiRouter;
 
 /**
  * Serves hook deliveries over HTTP.
@@ -25,8 +27,10 @@ use AdminBolt\Plugin\Support\Json;
  *
  * Handled requests:
  *
- *   POST  (any path)  a hook delivery, signature required
- *   GET   /health     a liveness probe, signature optional
+ *   POST  /              a hook delivery, signature required
+ *   POST  /ui/{slug}     render a panel page, signature required
+ *   POST  /ui/{slug}/{action}  run a page action, signature required
+ *   GET   /health        a liveness probe, signature optional
  *
  * A delivery that fails signature verification answers 401 and no handler
  * runs. Everything else answers 200, with the plugin's decision in the body:
@@ -39,6 +43,7 @@ final class HttpRuntime
         private readonly Manifest $manifest,
         private readonly Dispatcher $dispatcher,
         private readonly Logger $logger = new NullLogger(),
+        private readonly ?UiRouter $ui = null,
     ) {
     }
 
@@ -86,6 +91,12 @@ final class HttpRuntime
             return $this->json(401, ['status' => 'error', 'message' => 'Invalid signature.']);
         }
 
+        // Everything under /ui is the panel rendering a page or running one
+        // of its actions, not a hook.
+        if (str_starts_with($path, '/ui/') || $path === '/ui') {
+            return $this->ui($body);
+        }
+
         try {
             $request = HookRequest::fromJson($body);
         } catch (\Throwable $e) {
@@ -105,6 +116,79 @@ final class HttpRuntime
         ]);
 
         return $this->json($response->httpStatus(), $response->jsonSerialize());
+    }
+
+    /**
+     * Renders a page, or runs one of its actions.
+     *
+     * The request is already authenticated by the time this runs, so the
+     * viewer identity in the envelope is the panel's word for who is looking,
+     * not the browser's.
+     *
+     * The slug and action come from the envelope rather than from the URL on
+     * purpose: the body is what the signature covers, so the path could be
+     * altered in transit and the envelope could not.
+     */
+    private function ui(string $body): RuntimeResult
+    {
+        if ($this->ui === null) {
+            return $this->json(404, ['status' => 'error', 'message' => 'This plugin has no panel pages.']);
+        }
+
+        try {
+            $request = UiRequest::fromJson($body);
+        } catch (\Throwable $e) {
+            $this->logger->error('Could not read UI envelope', ['error' => $e->getMessage()]);
+
+            return $this->json(400, ['status' => 'error', 'message' => 'Malformed UI request.']);
+        }
+
+        // A page or action the plugin never registered is refused before any
+        // plugin code runs, so neither is reachable by guessing a name.
+        $known = $request->isAction()
+            ? $this->ui->hasAction((string) $request->action)
+            : $this->ui->hasPage($request->slug);
+
+        if (!$known) {
+            $this->logger->warning('Panel asked for a UI route this plugin does not have', [
+                'slug' => $request->slug,
+                'action' => $request->action,
+            ]);
+
+            return $this->json(404, ['status' => 'error', 'message' => 'No such page or action.']);
+        }
+
+        $started = microtime(true);
+
+        try {
+            $payload = $request->isAction()
+                ? ['status' => 'ok', 'result' => $this->ui->runAction($request)]
+                : ['status' => 'ok', 'page' => $this->ui->renderPage($request)];
+        } catch (\Throwable $e) {
+            $this->logger->error('UI handler threw', [
+                'slug' => $request->slug,
+                'action' => $request->action,
+                'exception' => $e::class,
+                'error' => $e->getMessage(),
+            ]);
+
+            // The viewer is a person looking at a page, so say something
+            // useful rather than showing them a blank panel. The detail is in
+            // the plugin log.
+            return $this->json(200, [
+                'status' => 'error',
+                'message' => 'This plugin could not render the page.',
+            ]);
+        }
+
+        $this->logger->info('Served a UI request', [
+            'slug' => $request->slug,
+            'action' => $request->action,
+            'panel' => $request->panel,
+            'duration_ms' => (int) ((microtime(true) - $started) * 1000),
+        ]);
+
+        return $this->json(200, $payload);
     }
 
     /**
@@ -160,6 +244,8 @@ final class HttpRuntime
             'status' => 'ok',
             'plugin' => $this->manifest->toPublicArray(),
             'handled_hooks' => $this->dispatcher->registeredHooks(),
+            'pages' => $this->ui?->pageSlugs() ?? [],
+            'actions' => $this->ui?->actionNames() ?? [],
             'php' => PHP_VERSION,
         ]);
     }

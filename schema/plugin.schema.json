@@ -262,7 +262,7 @@
         },
         "ui": {
             "type": "array",
-            "description": "Pages the panel renders for this plugin, in an iframe served by the plugin itself.",
+            "description": "Pages the panel adds to its navigation for this plugin. A declarative page is described by the plugin and drawn by the panel with its own components; an iframe page is served by the plugin as HTML and proxied by the panel.",
             "items": {
                 "type": "object",
                 "required": [
@@ -278,26 +278,42 @@
                             "admin",
                             "client",
                             "reseller"
-                        ]
+                        ],
+                        "description": "Which panel the page appears in, and therefore who may open it. The panel enforces this; the plugin does not have to."
                     },
                     "slug": {
                         "type": "string",
-                        "pattern": "^[a-z][a-z0-9-]*$"
+                        "pattern": "^[a-z][a-z0-9-]*$",
+                        "description": "Lower-case kebab-case. Becomes part of the panel URL and is what the plugin registers the page handler under."
                     },
                     "title": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "The navigation entry."
                     },
                     "icon": {
-                        "type": "string"
-                    },
-                    "path": {
                         "type": "string",
-                        "default": "/ui",
-                        "description": "Path on the plugin listener that serves the page."
+                        "description": "Heroicon name, for example heroicon-o-globe-alt."
                     },
                     "group": {
                         "type": "string",
-                        "description": "Navigation group the page appears under."
+                        "description": "Navigation group to file the page under."
+                    },
+                    "render": {
+                        "type": "string",
+                        "enum": [
+                            "declarative",
+                            "iframe"
+                        ],
+                        "default": "declarative",
+                        "description": "declarative: the plugin returns a page description and the panel renders it natively. iframe: the plugin serves its own HTML, which the panel proxies so the plugin needs no public port."
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "Required for an iframe page: the path on the plugin listener that serves the HTML."
+                    },
+                    "sort": {
+                        "type": "integer",
+                        "description": "Position within the navigation group."
                     }
                 }
             }
