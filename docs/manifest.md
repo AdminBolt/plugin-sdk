@@ -186,6 +186,30 @@ to pages a customer navigates to. Full treatment in [slots.md](slots.md).
 | `sort` | `100` | Order among this plugin's own slots in the same position. |
 | `cache` | `60` | Seconds the panel may reuse the answer, 3600 at most. A slot renders on pages that have nothing to do with the plugin, so `0` means a round trip on every request in the panel. |
 
+## `theme`
+
+A stylesheet the plugin offers the panel to wear. Full treatment in
+[themes.md](themes.md).
+
+```json
+"theme": {
+    "name": "Sharp",
+    "description": "Square corners, hairline borders, no soft shadows.",
+    "css": "dist/theme.css",
+    "panels": ["admin", "client"]
+}
+```
+
+| Field | Default | Notes |
+| --- | --- | --- |
+| `name` | required | What an operator picks from the plugins list. |
+| `css` | required | The stylesheet, relative to the plugin root. Must be a `.css` file inside the plugin; the panel serves it as `text/css` and serves nothing else. |
+| `panels` | all three | Which panels it repaints. |
+| `description` | no | One line about the look, on the install screen. |
+
+A plugin that ships only a theme needs no `runtime` block: there is no
+listener to call and no credentials to hold.
+
 ## A complete example
 
 ```json

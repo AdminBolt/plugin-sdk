@@ -7,8 +7,7 @@
     "required": [
         "id",
         "name",
-        "version",
-        "runtime"
+        "version"
     ],
     "additionalProperties": false,
     "properties": {
@@ -331,6 +330,43 @@
                         "default": "default",
                         "description": "Only for \"render\": \"iframe\". \"default\" is the width the panel centres its own pages at; \"full\" is everything between the navigation and the edge of the window."
                     }
+                }
+            }
+        },
+        "theme": {
+            "type": "object",
+            "description": "A stylesheet the plugin offers the panel to wear. Installing it makes the theme available; an operator chooses which theme is in use. The panel keeps its own stylesheet and loads this one after it, so a theme redefines the tokens it cares about rather than rebuilding everything.",
+            "required": [
+                "name",
+                "css"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "What an operator picks from the plugins list."
+                },
+                "css": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9._/-]+\\.css$",
+                    "description": "The stylesheet, relative to the plugin root, for example \"dist/theme.css\". The panel serves it as text/css and will serve nothing else."
+                },
+                "panels": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string",
+                        "enum": [
+                            "admin",
+                            "client",
+                            "reseller"
+                        ]
+                    },
+                    "description": "Which panels it repaints. All three when left out."
+                },
+                "description": {
+                    "type": "string",
+                    "description": "One line about the look, shown on the install screen."
                 }
             }
         },

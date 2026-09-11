@@ -286,6 +286,62 @@ final class ManifestTest extends TestCase
         self::assertSame(0, $manifest->slots()[1]['cache']);
     }
 
+    /**
+     * A theme is a file, not a program. Demanding an entrypoint for one would
+     * be asking for a PHP file that never runs.
+     */
+    public function test_a_plugin_that_only_ships_a_theme_needs_no_entrypoint(): void
+    {
+        self::assertSame([], Manifest::validate([
+            'id' => 'sharp-theme',
+            'name' => 'Sharp',
+            'version' => '1.0.0',
+            'theme' => ['name' => 'Sharp', 'css' => 'dist/theme.css'],
+        ]));
+
+        // Anything the panel has to call still needs one.
+        self::assertNotSame([], Manifest::validate([
+            'id' => 'sharp-theme',
+            'name' => 'Sharp',
+            'version' => '1.0.0',
+            'theme' => ['name' => 'Sharp', 'css' => 'dist/theme.css'],
+            'hooks' => ['domain.created'],
+        ]));
+    }
+
+    public function test_a_theme_must_name_itself_and_a_stylesheet_inside_the_plugin(): void
+    {
+        self::assertSame([], Manifest::validate($this->valid([
+            'theme' => ['name' => 'Sharp', 'css' => 'dist/theme.css', 'panels' => ['admin']],
+        ])));
+
+        self::assertNotSame([], Manifest::validate($this->valid([
+            'theme' => ['css' => 'dist/theme.css'],
+        ])));
+
+        self::assertNotSame([], Manifest::validate($this->valid([
+            'theme' => ['name' => 'Sharp', 'css' => '../../../etc/passwd.css'],
+        ])));
+
+        self::assertNotSame([], Manifest::validate($this->valid([
+            'theme' => ['name' => 'Sharp', 'css' => 'dist/theme.php'],
+        ])));
+
+        self::assertNotSame([], Manifest::validate($this->valid([
+            'theme' => ['name' => 'Sharp', 'css' => 'dist/theme.css', 'panels' => ['everywhere']],
+        ])));
+    }
+
+    public function test_a_theme_paints_every_panel_unless_it_says_otherwise(): void
+    {
+        $manifest = Manifest::fromArray($this->valid([
+            'theme' => ['name' => 'Sharp', 'css' => 'dist/theme.css'],
+        ]));
+
+        self::assertSame(['admin', 'client', 'reseller'], $manifest->theme()['panels']);
+        self::assertNull(Manifest::fromArray($this->valid())->theme());
+    }
+
     public function test_scopes_must_name_an_api_a_resource_and_an_access_level(): void
     {
         self::assertSame([], Manifest::validate($this->valid(['api' => ['scopes' => ['admin:hosting-accounts:read', 'client:dns-records:write']]])));

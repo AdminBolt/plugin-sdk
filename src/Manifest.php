@@ -137,7 +137,13 @@ final class Manifest
         $entrypoint = Arr::get($data, 'runtime.entrypoint');
 
         if (!is_string($entrypoint) || $entrypoint === '') {
-            $errors[] = '"runtime.entrypoint" is required: the PHP file the panel serves or executes, relative to the plugin root.';
+            // Unless there is nothing for the panel to call. A plugin that
+            // only carries a theme is a stylesheet: no listener, no secret,
+            // and an entrypoint would be a file that never runs.
+            if (self::needsListener($data)) {
+                $errors[] = '"runtime.entrypoint" is required: the PHP file the panel serves or executes, relative to the plugin root. '
+                    . 'A plugin that only ships a theme may leave it out.';
+            }
         } elseif (str_contains($entrypoint, '..')) {
             $errors[] = '"runtime.entrypoint" must stay inside the plugin directory.';
         }
@@ -153,6 +159,7 @@ final class Manifest
         $errors = [...$errors, ...self::validateScopes(Arr::get($data, 'api.scopes', []))];
         $errors = [...$errors, ...self::validateUi(Arr::get($data, 'ui', []))];
         $errors = [...$errors, ...self::validateSlots(Arr::get($data, 'slots', []))];
+        $errors = [...$errors, ...self::validateTheme(Arr::get($data, 'theme'))];
         $errors = [...$errors, ...self::validateCommands($data)];
 
         return $errors;
@@ -445,6 +452,78 @@ final class Manifest
 
             if (isset($slot['sort']) && !is_int($slot['sort'])) {
                 $errors[] = $label . '.sort must be an integer.';
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Whether anything in this manifest needs the panel to be able to call
+     * the plugin at all.
+     *
+     * @param array<mixed> $data
+     */
+    private static function needsListener(array $data): bool
+    {
+        foreach (['hooks', 'ui', 'slots', 'commands'] as $key) {
+            if (($data[$key] ?? []) !== []) {
+                return true;
+            }
+        }
+
+        return (array) Arr::get($data, 'api.scopes', []) !== [];
+    }
+
+    /**
+     * The stylesheet a plugin offers the panel to wear.
+     *
+     * A theme is the one thing a plugin ships that reaches a browser as the
+     * plugin wrote it, so the path is checked like a path: relative, inside
+     * the plugin, and a stylesheet. The panel serves it as text/css and
+     * loads it after its own, which is what makes a theme a file of
+     * overrides rather than a rebuild of everything.
+     *
+     * @return list<string>
+     */
+    private static function validateTheme(mixed $theme): array
+    {
+        if ($theme === null) {
+            return [];
+        }
+
+        if (!is_array($theme)) {
+            return ['"theme" must be an object describing one stylesheet.'];
+        }
+
+        $errors = [];
+
+        if (!is_string($theme['name'] ?? null) || trim((string) $theme['name']) === '') {
+            $errors[] = '"theme.name" is required; it is what an operator picks from the plugins list.';
+        }
+
+        $css = $theme['css'] ?? null;
+
+        if (!is_string($css) || $css === '') {
+            $errors[] = '"theme.css" is required: the stylesheet, relative to the plugin root, for example "dist/theme.css".';
+        } elseif (str_contains($css, '..') || str_starts_with($css, '/')) {
+            $errors[] = '"theme.css" must stay inside the plugin directory.';
+        } elseif (!str_ends_with(strtolower($css), '.css')) {
+            $errors[] = '"theme.css" must be a .css file. The panel serves it as a stylesheet and will serve nothing else.';
+        }
+
+        $panels = $theme['panels'] ?? null;
+
+        if ($panels !== null) {
+            if (!is_array($panels) || $panels === []) {
+                $errors[] = '"theme.panels" must name at least one of "admin", "client" and "reseller". Leave it out for all three.';
+            } else {
+                foreach ($panels as $panel) {
+                    if (!in_array($panel, ['admin', 'client', 'reseller'], true)) {
+                        $errors[] = '"theme.panels" may only contain "admin", "client" and "reseller".';
+                        break;
+                    }
+                }
             }
         }
 
@@ -790,6 +869,29 @@ final class Manifest
         )));
     }
 
+    /**
+     * The theme this manifest offers, if any.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function theme(): ?array
+    {
+        $theme = $this->raw['theme'] ?? null;
+
+        if (!is_array($theme) || !is_string($theme['css'] ?? null)) {
+            return null;
+        }
+
+        $panels = $theme['panels'] ?? ['admin', 'client', 'reseller'];
+
+        return [
+            'name' => is_string($theme['name'] ?? null) ? $theme['name'] : $this->id(),
+            'css' => (string) $theme['css'],
+            'panels' => is_array($panels) ? array_values(array_map('strval', $panels)) : [],
+            'description' => is_string($theme['description'] ?? null) ? $theme['description'] : null,
+        ];
+    }
+
     public function entrypoint(): string
     {
         return (string) Arr::get($this->raw, 'runtime.entrypoint', 'public/index.php');
@@ -821,6 +923,7 @@ final class Manifest
             'hooks' => $this->hooks(),
             'ui' => $this->ui(),
             'slots' => $this->slots(),
+            'theme' => $this->theme(),
             'transport' => $this->transport(),
         ];
     }
