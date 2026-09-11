@@ -56,6 +56,52 @@
             "type": "string",
             "description": "Heroicon name, for example heroicon-o-globe-alt."
         },
+        "category": {
+            "type": "string",
+            "enum": [
+                "appearance",
+                "security",
+                "backups",
+                "monitoring",
+                "email",
+                "domains",
+                "development",
+                "performance",
+                "automation",
+                "billing",
+                "integrations",
+                "other"
+            ],
+            "description": "The shelf the plugin sits on in the panel's plugin list. A theme that says nothing is filed under appearance; anything else is filed under other."
+        },
+        "screenshots": {
+            "type": "array",
+            "maxItems": 6,
+            "items": {
+                "oneOf": [
+                    {
+                        "type": "string",
+                        "description": "Path to an image inside the plugin, relative to the plugin root."
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "path"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "path": {
+                                "type": "string"
+                            },
+                            "caption": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                ]
+            },
+            "description": "Pictures of the plugin, shipped with it. png, jpg, webp, avif or gif inside the plugin directory; not SVG, and never a remote URL. Omit it and the panel shows whatever is in the plugin's screenshots/ directory."
+        },
         "sdk": {
             "type": "string",
             "description": "Composer constraint on adminbolt/plugin-sdk, for example ^1.0."

@@ -18,6 +18,40 @@ inline errors.
 | `homepage` | no | Where to file a bug. |
 | `icon` | no | Heroicon name, for example `heroicon-o-globe-alt`. |
 
+## How it is listed
+
+The plugin list is a shelf an operator browses before they install anything,
+so these two fields decide where a plugin is found and what it looks like
+there.
+
+| Field | Required | Notes |
+| --- | --- | --- |
+| `category` | no | One of `appearance`, `security`, `backups`, `monitoring`, `email`, `domains`, `development`, `performance`, `automation`, `billing`, `integrations`, `other`. It becomes the tab the plugin is found under. A word the panel does not know is filed under `other` rather than refused. A plugin that ships only a theme and says nothing is filed under `appearance`. |
+| `screenshots` | no | Up to six pictures shipped inside the plugin. Either a path or `{ "path": ..., "caption": ... }`. |
+
+```json
+"category": "development",
+"screenshots": [
+    "screenshots/overview.png",
+    { "path": "screenshots/deploy.png", "caption": "A deploy, step by step" }
+]
+```
+
+A screenshot is a file inside the plugin: `png`, `jpg`, `webp`, `avif` or
+`gif`, with a relative path that stays inside the plugin directory. Not SVG,
+which can carry script, and never a remote URL - the panel serves these
+itself rather than sending every administrator's browser to fetch an address
+a manifest chose.
+
+Say nothing and the panel still looks: a `screenshots/` directory is read as
+it stands, and a single `screenshot.png` or `preview.png` at the plugin root
+after that. A theme should have at least one. The panel draws it as the card,
+because what a theme is cannot be written in a sentence.
+
+Who wrote a plugin is not read from the manifest. The panel badges what it
+built itself from a list it ships, and everything else as community work, so
+an `author` of "AdminBolt" in somebody else's plugin.json vouches for nothing.
+
 ## Compatibility
 
 | Field | Notes |

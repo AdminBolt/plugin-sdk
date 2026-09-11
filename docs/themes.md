@@ -37,6 +37,25 @@ entrypoint. A theme is a file, not a program: there is no listener for the
 panel to call, no secret to hold, and nothing to configure. It is the one kind
 of plugin that installs with no credentials at all.
 
+## Show it
+
+The plugin list draws a theme as its picture, because what a theme is cannot
+be written in a sentence. Ship at least one.
+
+```json
+"category": "appearance",
+"screenshots": [
+    { "path": "screenshots/admin.png", "caption": "The admin dashboard" }
+]
+```
+
+A `screenshots/` directory is read even when the manifest says nothing about
+it, so a repository that already has one needs no change. Declare them when
+the order matters, or to caption them. See
+[manifest.md](manifest.md#how-it-is-listed) for what may be in one.
+
+A theme that says nothing about its category is filed under Appearance.
+
 ## Being chosen
 
 Installing a theme makes it available and nothing else. An operator picks one
