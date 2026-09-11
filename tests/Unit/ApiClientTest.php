@@ -9,6 +9,7 @@ use AdminBolt\Plugin\Exception\ApiException;
 use AdminBolt\Plugin\Exception\TransportException;
 use AdminBolt\Plugin\Http\HttpResponse;
 use AdminBolt\Plugin\Plugin;
+use AdminBolt\Plugin\Ui\UiRequest;
 use AdminBolt\Plugin\Tests\Fixtures\FakeHttpClient;
 use AdminBolt\Plugin\Tests\TestCase;
 
@@ -147,6 +148,42 @@ final class ApiClientTest extends TestCase
 
         self::assertSame('acme', $http->lastRequest()['headers']['X-Hosting-Account']);
         self::assertSame('https://panel.test:2087/api/client/domains', $http->lastRequest()['url']);
+    }
+
+    /**
+     * The panel's own word for which account the plugin is acting on. A
+     * plugin key may not name an account itself, so a client API call that
+     * does not carry this back is refused: the page envelope is where the
+     * grant comes from, and clientFor() is what passes it.
+     */
+    public function test_the_account_grant_travels_from_the_page_envelope_to_the_panel(): void
+    {
+        $http = (new FakeHttpClient())->queueJson(200, []);
+        $plugin = Plugin::create($this->manifest(), $this->config(), http: $http);
+
+        $request = UiRequest::fromArray([
+            'slug' => 'widgets',
+            'panel' => 'client',
+            'hosting_account' => ['id' => 7, 'username' => 'acme', 'grant' => 'signed-by-the-panel'],
+        ]);
+
+        $plugin->clientFor($request)->domains()->all();
+
+        self::assertSame('acme', $http->lastRequest()['headers']['X-Hosting-Account']);
+        self::assertSame('signed-by-the-panel', $http->lastRequest()['headers']['X-Plugin-Account-Grant']);
+    }
+
+    public function test_naming_an_account_by_hand_sends_no_grant(): void
+    {
+        // A plugin choosing an account itself is the case the grant exists to
+        // refuse, and the panel refuses it. Nothing is invented here to make
+        // such a call look authorised.
+        $http = (new FakeHttpClient())->queueJson(200, []);
+        $plugin = Plugin::create($this->manifest(), $this->config(), http: $http);
+
+        $plugin->client('acme')->domains()->all();
+
+        self::assertArrayNotHasKey('X-Plugin-Account-Grant', $http->lastRequest()['headers']);
     }
 
     public function test_the_admin_api_addresses_the_unprefixed_routes(): void

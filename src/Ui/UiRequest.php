@@ -98,6 +98,24 @@ final class UiRequest
         return is_string($username) && $username !== '' ? $username : null;
     }
 
+    /**
+     * The panel's signed word for which account this page is about.
+     *
+     * A plugin's API key is an admin key, so on its own it could name any
+     * account on the server, which is not what the approval screen offered.
+     * This is what takes that back: the panel mints it for the account whose
+     * page it is drawing, and the client API will not act without it.
+     *
+     * Opaque, short-lived, and bound to this plugin. Pass it along rather
+     * than reading it; {@see \AdminBolt\Plugin\Plugin::clientFor()} does.
+     */
+    public function hostingAccountGrant(): ?string
+    {
+        $grant = $this->hostingAccount['grant'] ?? null;
+
+        return is_string($grant) && $grant !== '' ? $grant : null;
+    }
+
     public function hostingAccountId(): ?int
     {
         $id = $this->hostingAccount['id'] ?? null;

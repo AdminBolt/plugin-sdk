@@ -99,6 +99,22 @@ final class HookRequest
     }
 
     /**
+     * The panel's signed word for which account this delivery is about.
+     *
+     * The same grant a page envelope carries, and needed for the same reason:
+     * a plugin's key may not name an account of its own choosing on the
+     * client API. Null when the panel sent no grant with the delivery, and a
+     * client API call made without one is refused rather than reaching
+     * further than was approved.
+     */
+    public function hostingAccountGrant(): ?string
+    {
+        $grant = $this->context('hosting_account.grant');
+
+        return is_string($grant) && $grant !== '' ? $grant : null;
+    }
+
+    /**
      * Whether this delivery is running inside the operation, and so can still
      * stop it.
      */

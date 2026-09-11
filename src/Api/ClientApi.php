@@ -42,13 +42,22 @@ final class ClientApi
      *
      * Only meaningful for an admin or reseller key: the panel ignores the
      * header for a hosting-account key, which can only ever act on itself.
+     *
+     * A plugin's key is neither. It may not choose an account at all: the
+     * panel decides which one and says so in the grant it puts in the page
+     * envelope, and without that grant the call is refused. So a plugin
+     * should reach the client API through
+     * {@see \AdminBolt\Plugin\Plugin::clientFor()}, which passes it.
      */
-    public function forAccount(string $username): self
+    public function forAccount(string $username, ?string $grant = null): self
     {
-        return new self(
-            $this->client->withHeaders(['X-Hosting-Account' => $username]),
-            $username,
-        );
+        $headers = ['X-Hosting-Account' => $username];
+
+        if ($grant !== null && $grant !== '') {
+            $headers['X-Plugin-Account-Grant'] = $grant;
+        }
+
+        return new self($this->client->withHeaders($headers), $username);
     }
 
     public function account(): Account

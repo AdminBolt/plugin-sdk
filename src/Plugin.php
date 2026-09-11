@@ -273,13 +273,13 @@ final class Plugin
      * With a username, acts on that account, which requires an admin or
      * reseller key. Without one, acts on whatever account the key belongs to.
      */
-    public function client(?string $hostingAccount = null): ClientApi
+    public function client(?string $hostingAccount = null, ?string $grant = null): ClientApi
     {
         $api = $this->client ??= new ClientApi(
             ApiClient::fromConfig($this->config, '/client', $this->http, $this->logger)
         );
 
-        return $hostingAccount === null ? $api : $api->forAccount($hostingAccount);
+        return $hostingAccount === null ? $api : $api->forAccount($hostingAccount, $grant);
     }
 
     /**
@@ -294,7 +294,16 @@ final class Plugin
     {
         $username = $request->hostingAccountUsername();
 
-        return $username === null ? $this->client() : $this->client($username);
+        if ($username === null) {
+            return $this->client();
+        }
+
+        // The grant travels with the account, because it is the panel's word
+        // for that account and the client API will not act on a plugin key
+        // without it. A request that carries no grant is one the panel did
+        // not scope to an account, and the call is refused rather than
+        // quietly reaching further than was approved.
+        return $this->client($username, $request->hostingAccountGrant());
     }
 
     /**
