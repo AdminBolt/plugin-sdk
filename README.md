@@ -152,11 +152,17 @@ The runtime is a pure function of headers and a body, so the whole delivery
 path is testable with no panel and no web server.
 
 ```php
+use AdminBolt\Plugin\Testing\FakeHttpClient;
+
 $plugin = Plugin::create($manifest, $config, http: new FakeHttpClient());
 $result = $plugin->httpRuntime()->handle('POST', '/', $headers, $body);
 
 self::assertSame('reject', $result->json()['status']);
 ```
+
+`FakeHttpClient` is shipped, not a fixture to copy, and it stands in for both
+the panel and whatever third-party service the plugin talks to through
+`$plugin->http()`.
 
 ```
 composer test

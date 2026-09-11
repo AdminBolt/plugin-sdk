@@ -10,7 +10,7 @@ use AdminBolt\Plugin\Exception\TransportException;
 use AdminBolt\Plugin\Http\HttpResponse;
 use AdminBolt\Plugin\Plugin;
 use AdminBolt\Plugin\Ui\UiRequest;
-use AdminBolt\Plugin\Tests\Fixtures\FakeHttpClient;
+use AdminBolt\Plugin\Testing\FakeHttpClient;
 use AdminBolt\Plugin\Tests\TestCase;
 
 final class ApiClientTest extends TestCase

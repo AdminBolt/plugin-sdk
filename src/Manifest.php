@@ -892,6 +892,31 @@ final class Manifest
         ];
     }
 
+    /**
+     * The plugin's own root directory, or null for a manifest built from an
+     * array in a test.
+     *
+     * Where a plugin reads a file it ships rather than one the panel wrote:
+     * a provisioning script an operator is told to run, a dashboard to import,
+     * a default configuration. The writable directories the panel provisions
+     * are Config::path() instead, and nothing under here should be written to:
+     * an update replaces it.
+     */
+    public function directory(): ?string
+    {
+        if ($this->path === null) {
+            return null;
+        }
+
+        // Resolved, because this ends up in front of an operator as a path to
+        // type: a manifest found from public/index.php would otherwise give
+        // them ".../public/../provision/install.sh" to copy.
+        $directory = dirname($this->path);
+        $resolved = realpath($directory);
+
+        return $resolved === false ? $directory : $resolved;
+    }
+
     public function entrypoint(): string
     {
         return (string) Arr::get($this->raw, 'runtime.entrypoint', 'public/index.php');

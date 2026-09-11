@@ -98,7 +98,7 @@ Responses:
 | `UiResponse::notify($message)` | toast, then re-render |
 | `UiResponse::error($message)` | the same in the panel's danger colour |
 | `UiResponse::refresh()` | re-render, say nothing |
-| `UiResponse::redirect($url)` | send the viewer elsewhere |
+| `UiResponse::redirect($path)` | send the viewer elsewhere **in the panel**: a path starting with a single slash, never another site |
 | `UiResponse::replace($page)` | swap in a different page |
 | `UiResponse::invalid([...])` | reject a form, errors under the fields |
 
@@ -121,6 +121,11 @@ Section::make('Credentials')->add(
 A `secret` field is write-only. Whatever value the plugin sets on it is
 dropped before the page is serialised, so a stored credential is never served
 back to a browser. Show that one is set with the placeholder.
+
+To send somebody to the service the plugin integrates with, write a link into
+a `Text::markdown()` component rather than redirecting. The panel follows only
+its own paths, so an external redirect is dropped and logged; and a link shows
+the viewer where it goes before they take it.
 
 `required` on a field is a courtesy to the person filling the form in. Validate
 on arrival: the values reach the plugin over HTTP and nothing stops a crafted

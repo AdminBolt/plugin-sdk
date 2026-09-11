@@ -149,11 +149,30 @@ The SDK's runtime is a pure function of headers and a body, so the whole
 delivery path is testable without a panel or a web server:
 
 ```php
+use AdminBolt\Plugin\Testing\FakeHttpClient;
+
 $plugin = Plugin::create($manifest, $config, http: new FakeHttpClient());
 $result = $plugin->httpRuntime()->handle('POST', '/', $headers, $body);
 
 self::assertSame('reject', $result->json()['status']);
 ```
+
+`FakeHttpClient` answers from a queue and records what it was asked, and it
+covers both halves of a plugin: the panel calls made through `admin()` and
+`client()`, and whatever the plugin itself calls through `http()`.
+
+```php
+$http = (new FakeHttpClient())
+    ->queueJson(200, ['version' => '11.2.0'])
+    ->queue(new TransportException('Connection refused'));
+
+// ... the plugin runs ...
+
+self::assertSame(['https://grafana.test/api/health'], $http->urls());
+```
+
+Queue a `TransportException` for the case where nothing answers at all. It is
+a different path from a 500, and usually the one with the bug in it.
 
 `bolt-plugin hook <name> --payload='{...}'` signs and delivers a fixture to a
 running plugin, which is the fastest way to see a handler run for real.

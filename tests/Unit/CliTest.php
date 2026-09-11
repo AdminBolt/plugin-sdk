@@ -10,7 +10,7 @@ use AdminBolt\Plugin\Cli\CommandJob;
 use AdminBolt\Plugin\Cli\CommandResult;
 use AdminBolt\Plugin\Http\HttpResponse;
 use AdminBolt\Plugin\Manifest;
-use AdminBolt\Plugin\Tests\Fixtures\FakeHttpClient;
+use AdminBolt\Plugin\Testing\FakeHttpClient;
 use AdminBolt\Plugin\Tests\TestCase;
 
 /**

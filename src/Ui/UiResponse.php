@@ -79,8 +79,17 @@ final class UiResponse implements \JsonSerializable
     }
 
     /**
-     * Send the viewer to a URL. An external one opens in a new tab, so the
-     * panel is never navigated away from underneath someone.
+     * Send the viewer somewhere else in the panel.
+     *
+     * A path, starting with a single slash. The panel refuses anything else
+     * and logs that it did, so this cannot carry somebody out to another
+     * site: an action runs in the panel's own window, and a plugin deciding
+     * where that window goes next is the one thing that would let an
+     * installed plugin phish the operator who installed it.
+     *
+     * A link out to the service a plugin integrates with is a link, written
+     * into a {@see Text::markdown()} component. The viewer sees where it goes
+     * before they click it, which is the difference that matters.
      */
     public static function redirect(string $url): self
     {

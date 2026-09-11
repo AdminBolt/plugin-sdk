@@ -104,6 +104,29 @@ A plugin names a command it declared in its manifest and an administrator
 approved; the panel builds the command line. [commands.md](commands.md) is the
 whole of it.
 
+## Calling something that is not the panel
+
+An integration plugin has a second half: the service it exists to connect the
+panel to, with that service's own address and its own authentication. The SDK
+signs nothing for that half, but it does hand over the transport:
+
+```php
+$response = $plugin->http()->send('GET', $base . '/api/health', [
+    'Authorization' => 'Bearer ' . $plugin->setting('token'),
+]);
+
+$health = $response->json();
+```
+
+It is the same client the panel calls go through, which is the point: a test
+that hands `Plugin::create()` a `FakeHttpClient` sees these calls too, so the
+third-party half of a plugin is testable without the third party.
+
+`http(timeout: 60, verifyTls: false)` is for the one case that differs from the
+default, a service on the same box behind a certificate nothing in the trust
+store signed. Both arguments are ignored when a client was injected, so asking
+for them in production code does not defeat a fake in a test.
+
 ## Hooks fire on your own calls
 
 Creating a domain through the API fires `domain.creating` and

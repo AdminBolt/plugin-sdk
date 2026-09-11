@@ -12,6 +12,7 @@ use AdminBolt\Plugin\Hook\Hook;
 use AdminBolt\Plugin\Hook\HookHandler;
 use AdminBolt\Plugin\Hook\HookRequest;
 use AdminBolt\Plugin\Hook\HookResponse;
+use AdminBolt\Plugin\Http\CurlHttpClient;
 use AdminBolt\Plugin\Http\HttpClient;
 use AdminBolt\Plugin\Logging\FileLogger;
 use AdminBolt\Plugin\Logging\Logger;
@@ -54,6 +55,12 @@ final class Plugin
     private ?AdminApi $admin = null;
 
     private ?ClientApi $client = null;
+
+    /**
+     * Built on first use, and only when nothing was injected. A plugin that
+     * never calls out keeps a curl handle it does not need out of memory.
+     */
+    private ?HttpClient $defaultHttp = null;
 
     private readonly UiRouter $ui;
 
@@ -255,6 +262,44 @@ final class Plugin
     public function httpRuntime(): HttpRuntime
     {
         return new HttpRuntime($this->config, $this->manifest, $this->dispatcher, $this->logger, $this->ui);
+    }
+
+    /**
+     * The transport for whatever this plugin talks to that is not the panel.
+     *
+     * The panel's own APIs are reached through admin() and client(), which
+     * sign every call and retry the ones worth retrying. An integration
+     * plugin has a second half the SDK knows nothing about: the service it
+     * exists to connect the panel to, with that service's own authentication.
+     *
+     *     $grafana = $plugin->http()->send('GET', $base . '/api/health', [
+     *         'Authorization' => 'Bearer ' . $plugin->setting('token'),
+     *     ]);
+     *
+     * It is the same client the panel calls go through, so a test that hands
+     * Plugin::create() a fake sees these calls too. Without it a plugin has
+     * to build its own curl handle, and the third-party half of it -- usually
+     * the half most worth testing -- stops being reachable from a test.
+     *
+     * The arguments are for the one case that differs from the default: a
+     * service on the same box behind a certificate nothing in the trust store
+     * signed, or a call slow enough to need its own ceiling. They are ignored
+     * when a client was injected, so passing them does not defeat a fake.
+     */
+    public function http(?int $timeout = null, ?bool $verifyTls = null): HttpClient
+    {
+        if ($this->http !== null) {
+            return $this->http;
+        }
+
+        if ($timeout === null && $verifyTls === null) {
+            return $this->defaultHttp ??= new CurlHttpClient(timeout: $this->config->timeout);
+        }
+
+        return new CurlHttpClient(
+            timeout: $timeout ?? $this->config->timeout,
+            verifyTls: $verifyTls ?? true,
+        );
     }
 
     /**
