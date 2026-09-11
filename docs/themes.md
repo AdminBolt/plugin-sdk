@@ -70,8 +70,57 @@ Then, only where a token cannot reach, the panel's own classes. Filament names
 everything it renders with an `fi-` prefix, and your file loads last, so a
 single class selector is enough and `!important` almost never is.
 
-Keep to colour, elevation, radius and motion. Padding, width and font size are
-where a theme stops being a theme and starts breaking layouts on a phone.
+Colour, elevation, radius, type and motion are safe ground, and so is a
+density change to the chrome or a table row. What is not safe is anything a
+page lays out against: widths, grid columns, and the padding of the content
+container. That is where a theme stops being a theme and starts breaking
+layouts on a phone.
+
+## Fonts
+
+A theme can change the typeface, and there are two ways to get one.
+
+The panel already fetches its own from Google Fonts, so a theme on a box with
+outbound access can do the same. The `@import` has to be the first thing in
+the file that is not a comment:
+
+```css
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&display=swap');
+
+:root {
+    --ab-font-heading: 'IBM Plex Sans', sans-serif;
+}
+
+body,
+.fi-body {
+    font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+}
+```
+
+Or ship the file. Put it beside the stylesheet and point at it with a relative
+URL:
+
+```css
+@font-face {
+    font-family: 'Sharp Grotesk';
+    src: url('fonts/sharp-grotesk.woff2') format('woff2');
+    font-display: swap;
+}
+```
+
+A relative URL in a stylesheet resolves against the stylesheet's own address,
+which is `/plugin-theme/<plugin>/theme.css`, so the browser asks the panel for
+`/plugin-theme/<plugin>/fonts/sharp-grotesk.woff2` and the panel serves it out
+of the plugin, from beside the CSS file. Nothing to declare in the manifest.
+
+The same holds for a background image or a logo the theme draws itself. What
+may be served is an allowlist: `woff2`, `woff`, `ttf`, `otf`, `png`, `jpg`,
+`webp`, `avif` and `gif`. SVG is deliberately not on it, because an SVG can
+carry script, and a theme that needs a drawing can ship a PNG.
+
+Self-hosting is the better answer on a box with no outbound access, or where
+an operator would rather their administrators' browsers did not talk to a font
+CDN on every page.
 
 ## What the panel will not do
 
