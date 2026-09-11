@@ -15,6 +15,10 @@ terminal, a canvas or an existing single-page app.
 Both are declared the same way and both are proxied by the panel, so a plugin
 never needs a public port either way.
 
+There is a third thing a plugin can draw, which is not a page at all: a
+[slot](slots.md), something in the panel's own footer, sidebar or top bar that
+a customer meets without going anywhere.
+
 ## A page
 
 Declare it in `plugin.json`, which is what puts it in the navigation:

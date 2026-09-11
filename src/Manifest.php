@@ -8,6 +8,7 @@ use AdminBolt\Plugin\Exception\ManifestException;
 use AdminBolt\Plugin\Hook\Hook;
 use AdminBolt\Plugin\Support\Arr;
 use AdminBolt\Plugin\Support\Json;
+use AdminBolt\Plugin\Ui\SlotPosition;
 
 /**
  * plugin.json, parsed and validated.
@@ -151,6 +152,7 @@ final class Manifest
         $errors = [...$errors, ...self::validateSettings(Arr::get($data, 'settings', []))];
         $errors = [...$errors, ...self::validateScopes(Arr::get($data, 'api.scopes', []))];
         $errors = [...$errors, ...self::validateUi(Arr::get($data, 'ui', []))];
+        $errors = [...$errors, ...self::validateSlots(Arr::get($data, 'slots', []))];
         $errors = [...$errors, ...self::validateCommands($data)];
 
         return $errors;
@@ -365,6 +367,84 @@ final class Manifest
             if (isset($page['path'])) {
                 $errors[] = $label . '.path is no longer used. The panel proxies /ui/' . (is_string($slug) ? $slug : '{slug}')
                     . ' on the plugin, and $plugin->app(\'' . (is_string($slug) ? $slug : 'slug') . '\', ...) is what serves it.';
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Where the plugin draws inside the panel's own chrome.
+     *
+     * A position is one of the names in {@see SlotPosition}, which is the
+     * whole catalogue: the panel keeps its own map from those names to
+     * wherever it currently draws them, so a plugin declaring "footer" keeps
+     * drawing in the footer whatever the panel is built on.
+     *
+     * @return list<string>
+     */
+    private static function validateSlots(mixed $slots): array
+    {
+        if ($slots === []) {
+            return [];
+        }
+
+        if (!is_array($slots)) {
+            return ['"slots" must be an array of slot definitions.'];
+        }
+
+        $errors = [];
+        $seen = [];
+
+        foreach ($slots as $index => $slot) {
+            $label = sprintf('slots[%s]', (string) $index);
+
+            if (!is_array($slot)) {
+                $errors[] = $label . ' must be an object.';
+                continue;
+            }
+
+            $panel = $slot['panel'] ?? null;
+
+            if (!in_array($panel, ['admin', 'client', 'reseller'], true)) {
+                $errors[] = $label . '.panel must be "admin", "client" or "reseller"; it decides who sees what is drawn.';
+            }
+
+            $position = $slot['position'] ?? null;
+
+            if (!is_string($position) || !SlotPosition::isKnown($position)) {
+                $message = $label . '.position must be one of the positions in SlotPosition, for example "footer" '
+                    . 'or "sidebar.nav.end".';
+
+                $closest = is_string($position) ? SlotPosition::closest($position) : null;
+
+                $errors[] = $closest === null ? $message : $message . ' Did you mean "' . $closest . '"?';
+            }
+
+            $slug = $slot['slug'] ?? null;
+
+            if (!is_string($slug) || preg_match('/^[a-z][a-z0-9-]*$/', $slug) !== 1) {
+                $errors[] = $label . '.slug is required and must be lower-case kebab-case; it is what the plugin '
+                    . 'registers the slot handler under.';
+            } elseif (is_string($position)) {
+                $key = $panel . '/' . $position . '/' . $slug;
+
+                if (isset($seen[$key])) {
+                    $errors[] = sprintf('%s declares "%s" in %s twice.', $label, $slug, $position);
+                }
+
+                $seen[$key] = true;
+            }
+
+            $cache = $slot['cache'] ?? null;
+
+            if ($cache !== null && (!is_int($cache) || $cache < 0 || $cache > 3600)) {
+                $errors[] = $label . '.cache must be a whole number of seconds between 0 and 3600. A slot renders on '
+                    . 'pages that have nothing to do with the plugin, so the panel holds on to what it returned.';
+            }
+
+            if (isset($slot['sort']) && !is_int($slot['sort'])) {
+                $errors[] = $label . '.sort must be an integer.';
             }
         }
 
@@ -671,6 +751,45 @@ final class Manifest
         )));
     }
 
+    /**
+     * The slots this manifest declares, normalised.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function slots(): array
+    {
+        $slots = $this->raw['slots'] ?? [];
+        $declared = [];
+
+        foreach (is_array($slots) ? $slots : [] as $slot) {
+            if (!is_array($slot) || !is_string($slot['slug'] ?? null)) {
+                continue;
+            }
+
+            $declared[] = [
+                'panel' => (string) ($slot['panel'] ?? ''),
+                'position' => (string) ($slot['position'] ?? ''),
+                'slug' => (string) $slot['slug'],
+                'sort' => is_int($slot['sort'] ?? null) ? $slot['sort'] : 100,
+                'cache' => is_int($slot['cache'] ?? null) ? $slot['cache'] : 60,
+                'label' => is_string($slot['label'] ?? null) ? $slot['label'] : null,
+            ];
+        }
+
+        return $declared;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function slotSlugs(): array
+    {
+        return array_values(array_unique(array_map(
+            static fn (array $slot): string => $slot['slug'],
+            $this->slots()
+        )));
+    }
+
     public function entrypoint(): string
     {
         return (string) Arr::get($this->raw, 'runtime.entrypoint', 'public/index.php');
@@ -701,6 +820,7 @@ final class Manifest
             'contract' => self::CONTRACT,
             'hooks' => $this->hooks(),
             'ui' => $this->ui(),
+            'slots' => $this->slots(),
             'transport' => $this->transport(),
         ];
     }

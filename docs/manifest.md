@@ -165,6 +165,27 @@ embedded in the panel's navigation.
 The panel passes the signed identity of the viewer, so the page knows which
 account it is being viewed for without trusting a query parameter.
 
+## `slots`
+
+Places in the panel's own layout where the plugin draws something, as opposed
+to pages a customer navigates to. Full treatment in [slots.md](slots.md).
+
+```json
+"slots": [
+    { "panel": "client", "position": "sidebar.nav.end",
+      "slug": "policy-note", "label": "A note under the navigation", "cache": 120 }
+]
+```
+
+| Field | Default | Notes |
+| --- | --- | --- |
+| `panel` | required | `admin`, `client` or `reseller`. Who sees it. |
+| `position` | required | One of the 62 names in `SlotPosition`, for example `footer` or `sidebar.nav.end`. They are the panel's own names, so they survive a change of view layer. |
+| `slug` | required | Lower-case kebab-case. What the slot handler is registered under. |
+| `label` | no | What the install screen calls it. Without one an administrator reads the Filament identifier. |
+| `sort` | `100` | Order among this plugin's own slots in the same position. |
+| `cache` | `60` | Seconds the panel may reuse the answer, 3600 at most. A slot renders on pages that have nothing to do with the plugin, so `0` means a round trip on every request in the panel. |
+
 ## A complete example
 
 ```json
@@ -192,7 +213,11 @@ account it is being viewed for without trusting a query parameter.
         { "key": "proxied", "type": "bool", "label": "Proxy records through Cloudflare", "default": false }
     ],
     "ui": [
-        { "panel": "admin", "slug": "cloudflare", "title": "Cloudflare", "path": "/ui/admin" }
+        { "panel": "admin", "slug": "cloudflare", "title": "Cloudflare" }
+    ],
+    "slots": [
+        { "panel": "admin", "position": "footer", "slug": "sync-state",
+          "label": "Cloudflare sync state in the footer" }
     ]
 }
 ```

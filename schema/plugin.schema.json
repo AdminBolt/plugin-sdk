@@ -334,6 +334,118 @@
                 }
             }
         },
+        "slots": {
+            "type": "array",
+            "description": "Places in the panel's own layout where the plugin draws something. A page is somewhere a customer goes; a slot is something they meet without going anywhere. What the plugin returns is a page description and the panel renders it with its own components, so a slot carries no markup either.",
+            "items": {
+                "type": "object",
+                "required": [
+                    "panel",
+                    "position",
+                    "slug"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "panel": {
+                        "type": "string",
+                        "enum": [
+                            "admin",
+                            "client",
+                            "reseller"
+                        ],
+                        "description": "Which panel it is drawn in, and therefore who sees it."
+                    },
+                    "position": {
+                        "type": "string",
+                        "enum": [
+                            "auth.login.form.after",
+                            "auth.login.form.before",
+                            "auth.password-reset.request.form.after",
+                            "auth.password-reset.request.form.before",
+                            "auth.password-reset.reset.form.after",
+                            "auth.password-reset.reset.form.before",
+                            "auth.register.form.after",
+                            "auth.register.form.before",
+                            "body.end",
+                            "body.start",
+                            "content.after",
+                            "content.before",
+                            "content.end",
+                            "content.start",
+                            "footer",
+                            "global-search.after",
+                            "global-search.before",
+                            "global-search.end",
+                            "global-search.start",
+                            "page.end",
+                            "page.footer-widgets.after",
+                            "page.footer-widgets.before",
+                            "page.header-widgets.after",
+                            "page.header-widgets.before",
+                            "page.header.actions.after",
+                            "page.header.actions.before",
+                            "page.start",
+                            "page.sub-navigation.end.after",
+                            "page.sub-navigation.end.before",
+                            "page.sub-navigation.select.after",
+                            "page.sub-navigation.select.before",
+                            "page.sub-navigation.sidebar.after",
+                            "page.sub-navigation.sidebar.before",
+                            "page.sub-navigation.start.after",
+                            "page.sub-navigation.start.before",
+                            "page.sub-navigation.top.after",
+                            "page.sub-navigation.top.before",
+                            "resource.pages.list-records.table.after",
+                            "resource.pages.list-records.table.before",
+                            "resource.pages.list-records.tabs.end",
+                            "resource.pages.list-records.tabs.start",
+                            "resource.pages.manage-related-records.table.after",
+                            "resource.pages.manage-related-records.table.before",
+                            "resource.relation-manager.after",
+                            "resource.relation-manager.before",
+                            "resource.tabs.end",
+                            "resource.tabs.start",
+                            "sidebar.footer",
+                            "sidebar.nav.end",
+                            "sidebar.nav.start",
+                            "simple-page.end",
+                            "simple-page.start",
+                            "tenant-menu.after",
+                            "tenant-menu.before",
+                            "topbar.after",
+                            "topbar.before",
+                            "topbar.end",
+                            "topbar.start",
+                            "user-menu.after",
+                            "user-menu.before",
+                            "user-menu.profile.after",
+                            "user-menu.profile.before"
+                        ],
+                        "description": "Where in the panel it is drawn. These are the panel's own names, the same list as SlotPosition in the SDK, and the panel maps them to whatever it renders with; a plugin that declares \"footer\" keeps drawing in the footer whatever the panel is built on."
+                    },
+                    "slug": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9-]*$",
+                        "description": "Lower-case kebab-case. What the plugin registers the slot handler under."
+                    },
+                    "label": {
+                        "type": "string",
+                        "description": "What the install screen calls this slot. Without one the panel turns the position into words, which reads like a Filament identifier because it is one."
+                    },
+                    "sort": {
+                        "type": "integer",
+                        "description": "Order among this plugin's own slots in the same position."
+                    },
+                    "cache": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3600,
+                        "default": 60,
+                        "description": "How long the panel may reuse what this slot returned, in seconds. A slot renders on pages that have nothing to do with the plugin, so 0 means a round trip on every request in the panel."
+                    }
+                }
+            }
+        },
         "commands": {
             "type": "array",
             "description": "Commands the plugin may run in an account. An administrator approves these by name and by argument, and the panel builds every command line from its own copy of them, so a plugin can never run something it did not declare here.",

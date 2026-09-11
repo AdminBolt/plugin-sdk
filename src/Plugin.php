@@ -149,6 +149,41 @@ final class Plugin
     }
 
     /**
+     * Draw something in one of the panel's own positions.
+     *
+     * A page is somewhere a customer goes. A slot is something they meet
+     * without going anywhere: a line in the footer, a note under the
+     * navigation, a card above the content of every page.
+     *
+     *     $plugin->slot('footer-note', fn (UiRequest $request) => Page::make('')
+     *         ->add(Text::make('Backups ran an hour ago')));
+     *
+     * The slug must also appear under "slots" in plugin.json, which is what
+     * decides the position and the panel it is drawn in. What comes back is a
+     * page description and the panel renders it with its own components,
+     * exactly as it renders a page, so there is no markup here either.
+     *
+     * Two things are worth knowing about where this runs. It is rendered
+     * while somebody is waiting for a page that has nothing to do with this
+     * plugin, so it has a short timeout and the panel holds on to the answer
+     * for as long as the manifest asks. And there is no Livewire component
+     * behind a render hook, so anything with a button on it is dropped: a
+     * slot that needs one links to a page instead.
+     *
+     * @param callable(UiRequest): Page $handler
+     */
+    public function slot(string $slug, callable $handler): self
+    {
+        // The same registration a page gets, because the panel asks for a
+        // slot exactly as it asks for a page. The separate name is for the
+        // reader: a plugin's slots and its pages are different things to
+        // think about even where the mechanism is one.
+        $this->ui->page($slug, $handler);
+
+        return $this;
+    }
+
+    /**
      * Handle a button press or a form submission from one of the pages.
      *
      * Only registered names are reachable, and the panel will not invoke one

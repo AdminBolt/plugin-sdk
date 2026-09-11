@@ -75,6 +75,7 @@ bolt-plugin hook domain.creating --payload='{"domain":"example.test"}'
 - [Hooks](docs/hooks.md) — the catalogue, the envelope, signatures, vetoes and mutations
 - [Calling the panel API](docs/api.md) — admin and client APIs, scopes, errors, retries
 - [Plugin pages](docs/ui.md) — putting your own pages in the panel
+- [Slots](docs/slots.md) — drawing in the panel's own footer, sidebar and pages
 - [Running commands](docs/commands.md) — declaring what a plugin may run in an account
 - [plugin.json](docs/manifest.md) — every manifest field
 - [What the panel implements](docs/panel-integration.md) — the panel-side half of the contract

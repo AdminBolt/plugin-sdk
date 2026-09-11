@@ -133,6 +133,28 @@ frame-ancestors policy naming the panel only, and never expose the plugin
 listener publicly: the proxy is what keeps it reachable only through the panel,
 where the session check already happened.
 
+## Rendering slots
+
+A slot is the same call as a page render, to the same path, and the panel
+takes only the components out of what comes back. What differs is everything
+around the call, because a slot is rendered while somebody is waiting for a
+page that has nothing to do with the plugin:
+
+- a short timeout, three seconds by default;
+- the answer cached for the `cache` the manifest asks for, keyed on the plugin
+  version and the viewer, so a slot is one round trip a minute rather than one
+  per request;
+- one failure stops the panel calling that slot for a minute;
+- anything with a button in it is dropped before rendering, because there is
+  no Livewire component behind a render hook to receive the click;
+- nothing thrown while rendering a slot escapes into the page around it.
+
+The positions are the panel's own names, and the panel holds the map from them
+to its view layer's render hooks. That map is the only thing that moves if the
+view layer is ever replaced: a plugin that declared "footer" keeps drawing in
+the footer. One hook is registered per position installed plugins asked for,
+and a plugin that is not approved registers nothing.
+
 ## The viewer envelope
 
 The same HMAC scheme as a hook delivery, over the same signed string. It

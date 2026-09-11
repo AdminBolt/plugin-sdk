@@ -199,6 +199,93 @@ final class ManifestTest extends TestCase
         self::assertStringContainsString("app('console'", $errors[0]);
     }
 
+    public function test_a_slot_must_name_a_panel_a_position_and_a_slug(): void
+    {
+        self::assertSame([], Manifest::validate($this->valid([
+            'slots' => [['panel' => 'client', 'position' => 'footer', 'slug' => 'footer-note']],
+        ])));
+
+        self::assertNotSame([], Manifest::validate($this->valid([
+            'slots' => [['panel' => 'everyone', 'position' => 'footer', 'slug' => 'footer-note']],
+        ])));
+
+        self::assertNotSame([], Manifest::validate($this->valid([
+            'slots' => [['panel' => 'client', 'position' => 'the footer please', 'slug' => 'footer-note']],
+        ])));
+
+        self::assertNotSame([], Manifest::validate($this->valid([
+            'slots' => [['panel' => 'client', 'position' => 'footer', 'slug' => 'Footer Note']],
+        ])));
+    }
+
+    /**
+     * The catalogue has no name for the document head, the script block or
+     * the stylesheet block, because those take markup and a plugin never
+     * sends any.
+     */
+    public function test_a_slot_cannot_draw_into_the_document_head(): void
+    {
+        foreach (['head.end', 'scripts.after', 'styles.before'] as $position) {
+            self::assertNotSame([], Manifest::validate($this->valid([
+                'slots' => [['panel' => 'admin', 'position' => $position, 'slug' => 'note']],
+            ])), $position . ' should be refused.');
+        }
+    }
+
+    public function test_a_position_with_a_typo_in_it_is_told_what_was_probably_meant(): void
+    {
+        $errors = Manifest::validate($this->valid([
+            'slots' => [['panel' => 'admin', 'position' => 'sidebar.nav.ends', 'slug' => 'note']],
+        ]));
+
+        self::assertStringContainsString('Did you mean "sidebar.nav.end"?', $errors[0]);
+    }
+
+    public function test_a_slot_cannot_ask_the_panel_to_hold_an_answer_forever(): void
+    {
+        self::assertSame([], Manifest::validate($this->valid([
+            'slots' => [['panel' => 'admin', 'position' => 'footer', 'slug' => 'note', 'cache' => 0]],
+        ])));
+
+        self::assertNotSame([], Manifest::validate($this->valid([
+            'slots' => [['panel' => 'admin', 'position' => 'footer', 'slug' => 'note', 'cache' => 99999]],
+        ])));
+    }
+
+    public function test_one_slot_cannot_be_declared_twice_in_the_same_position(): void
+    {
+        $errors = Manifest::validate($this->valid([
+            'slots' => [
+                ['panel' => 'admin', 'position' => 'footer', 'slug' => 'note'],
+                ['panel' => 'admin', 'position' => 'footer', 'slug' => 'note'],
+            ],
+        ]));
+
+        self::assertNotSame([], $errors);
+
+        // The same slot in two different positions is a normal thing to want.
+        self::assertSame([], Manifest::validate($this->valid([
+            'slots' => [
+                ['panel' => 'admin', 'position' => 'footer', 'slug' => 'note'],
+                ['panel' => 'admin', 'position' => 'topbar.end', 'slug' => 'note'],
+            ],
+        ])));
+    }
+
+    public function test_the_slots_it_declares_can_be_read_back(): void
+    {
+        $manifest = Manifest::fromArray($this->valid([
+            'slots' => [
+                ['panel' => 'admin', 'position' => 'footer', 'slug' => 'note'],
+                ['panel' => 'client', 'position' => 'sidebar.nav.end', 'slug' => 'nav-note', 'cache' => 0],
+            ],
+        ]));
+
+        self::assertSame(['note', 'nav-note'], $manifest->slotSlugs());
+        self::assertSame(60, $manifest->slots()[0]['cache'], 'a minute unless the manifest says otherwise');
+        self::assertSame(0, $manifest->slots()[1]['cache']);
+    }
+
     public function test_scopes_must_name_an_api_a_resource_and_an_access_level(): void
     {
         self::assertSame([], Manifest::validate($this->valid(['api' => ['scopes' => ['admin:hosting-accounts:read', 'client:dns-records:write']]])));
