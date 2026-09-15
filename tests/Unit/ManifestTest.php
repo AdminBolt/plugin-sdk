@@ -342,6 +342,64 @@ final class ManifestTest extends TestCase
         self::assertNull(Manifest::fromArray($this->valid())->theme());
     }
 
+    public function test_a_screenshot_is_a_path_or_an_object_with_one(): void
+    {
+        self::assertSame([], Manifest::validate($this->valid([
+            'screenshots' => [
+                'screenshots/overview.png',
+                ['path' => 'screenshots/deploy.png', 'caption' => 'A deploy, step by step'],
+            ],
+        ])));
+
+        self::assertNotSame([], Manifest::validate($this->valid([
+            'screenshots' => [['caption' => 'No path at all']],
+        ])));
+
+        self::assertNotSame([], Manifest::validate($this->valid([
+            'screenshots' => ['../../../etc/passwd.png'],
+        ])));
+
+        self::assertNotSame([], Manifest::validate($this->valid([
+            'screenshots' => ['screenshots/overview.svg'],
+        ])));
+
+        self::assertNotSame([], Manifest::validate($this->valid([
+            'screenshots' => array_fill(0, 7, 'screenshots/one.png'),
+        ])));
+    }
+
+    /**
+     * A theme's whole subject is what the panel will look like, and the
+     * panel now has two of those to show: an operator on the dark appearance
+     * should not be shown a light screenshot, or the other way round.
+     */
+    public function test_a_screenshot_may_declare_a_dark_counterpart(): void
+    {
+        self::assertSame([], Manifest::validate($this->valid([
+            'screenshots' => [
+                ['path' => 'screenshots/light/dashboard.png', 'dark' => 'screenshots/dark/dashboard.png'],
+            ],
+        ])));
+
+        self::assertNotSame([], Manifest::validate($this->valid([
+            'screenshots' => [
+                ['path' => 'screenshots/light/dashboard.png', 'dark' => '../../../etc/passwd.png'],
+            ],
+        ])));
+
+        $manifest = Manifest::fromArray($this->valid([
+            'screenshots' => [
+                ['path' => 'screenshots/light/dashboard.png', 'dark' => 'screenshots/dark/dashboard.png', 'caption' => 'Dashboard'],
+                'screenshots/single.png',
+            ],
+        ]));
+
+        self::assertSame([
+            ['path' => 'screenshots/light/dashboard.png', 'dark' => 'screenshots/dark/dashboard.png', 'caption' => 'Dashboard'],
+            ['path' => 'screenshots/single.png', 'dark' => null, 'caption' => null],
+        ], $manifest->screenshots());
+    }
+
     public function test_scopes_must_name_an_api_a_resource_and_an_access_level(): void
     {
         self::assertSame([], Manifest::validate($this->valid(['api' => ['scopes' => ['admin:hosting-accounts:read', 'client:dns-records:write']]])));

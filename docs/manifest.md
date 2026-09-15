@@ -27,7 +27,7 @@ there.
 | Field | Required | Notes |
 | --- | --- | --- |
 | `category` | no | One of `appearance`, `security`, `backups`, `monitoring`, `email`, `domains`, `development`, `performance`, `automation`, `billing`, `integrations`, `other`. It becomes the tab the plugin is found under. A word the panel does not know is filed under `other` rather than refused. A plugin that ships only a theme and says nothing is filed under `appearance`. |
-| `screenshots` | no | Up to six pictures shipped inside the plugin. Either a path or `{ "path": ..., "caption": ... }`. |
+| `screenshots` | no | Up to six pictures shipped inside the plugin. Either a path or `{ "path": ..., "dark": ..., "caption": ... }`. |
 
 ```json
 "category": "development",
@@ -43,10 +43,31 @@ which can carry script, and never a remote URL - the panel serves these
 itself rather than sending every administrator's browser to fetch an address
 a manifest chose.
 
-Say nothing and the panel still looks: a `screenshots/` directory is read as
-it stands, and a single `screenshot.png` or `preview.png` at the plugin root
-after that. A theme should have at least one. The panel draws it as the card,
-because what a theme is cannot be written in a sentence.
+`path` is what an operator on the panel's light appearance sees. Add `dark`
+to show something else - usually the same screenshot taken against a dark
+background - to an operator who has switched to dark. Leave `dark` out and
+`path` is shown either way:
+
+```json
+"screenshots": [
+    { "path": "screenshots/light/dashboard.png", "dark": "screenshots/dark/dashboard.png", "caption": "The dashboard" }
+]
+```
+
+Say nothing and the panel still looks. It reads, in order:
+
+1. `screenshots/light/` and `screenshots/dark/`, paired by filename - so
+   `screenshots/light/dashboard.png` and `screenshots/dark/dashboard.png`
+   become one entry with both appearances, and a file that exists on only one
+   side is shown on both rather than dropped.
+2. Failing that, a flat `screenshots/` directory, shown as-is on every
+   appearance.
+3. Failing that, a single `screenshot.png` or `preview.png` at the plugin
+   root.
+
+A theme should have at least one screenshot, ideally one of each appearance.
+The panel draws it as the card, because what a theme is cannot be written in
+a sentence.
 
 Who wrote a plugin is not read from the manifest. The panel badges what it
 built itself from a list it ships, and everything else as community work, so

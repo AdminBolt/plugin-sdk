@@ -45,14 +45,22 @@ be written in a sentence. Ship at least one.
 ```json
 "category": "appearance",
 "screenshots": [
-    { "path": "screenshots/admin.png", "caption": "The admin dashboard" }
+    { "path": "screenshots/light/admin.png", "dark": "screenshots/dark/admin.png", "caption": "The admin dashboard" }
 ]
 ```
 
-A `screenshots/` directory is read even when the manifest says nothing about
-it, so a repository that already has one needs no change. Declare them when
-the order matters, or to caption them. See
-[manifest.md](manifest.md#how-it-is-listed) for what may be in one.
+A theme repaints the panel, and the panel has two appearances, so its own
+screenshot is the one place where showing only one is misleading: an operator
+on dark should not be sold a light dashboard. Ship both and pair them under
+`screenshots/light/` and `screenshots/dark/` with matching filenames -
+`screenshots/light/admin.png` next to `screenshots/dark/admin.png` - and the
+panel reads the pair with no `screenshots` entry needed at all. Declare them
+in the manifest instead when the order matters, or to caption them.
+
+A `screenshots/` directory with no `light/`/`dark/` split under it is still
+read as it stands, for a theme with nothing to say about appearance - shown
+as-is on both. See [manifest.md](manifest.md#how-it-is-listed) for what may
+be in a declared entry.
 
 A theme that says nothing about its category is filed under Appearance.
 

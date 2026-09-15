@@ -91,7 +91,12 @@
                         "additionalProperties": false,
                         "properties": {
                             "path": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "Shown when the operator is on the panel's light appearance. Also the fallback shown on dark if \"dark\" is omitted."
+                            },
+                            "dark": {
+                                "type": "string",
+                                "description": "Shown instead of \"path\" when the operator is on the panel's dark appearance. Omit it and \"path\" is used for both."
                             },
                             "caption": {
                                 "type": "string"
@@ -100,7 +105,7 @@
                     }
                 ]
             },
-            "description": "Pictures of the plugin, shipped with it. png, jpg, webp, avif or gif inside the plugin directory; not SVG, and never a remote URL. Omit it and the panel shows whatever is in the plugin's screenshots/ directory."
+            "description": "Pictures of the plugin, shipped with it. png, jpg, webp, avif or gif inside the plugin directory; not SVG, and never a remote URL. Omit it and the panel shows whatever is in the plugin's screenshots/ directory - including a light/ and dark/ pair of subdirectories, matched by filename."
         },
         "sdk": {
             "type": "string",

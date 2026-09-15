@@ -34,6 +34,15 @@ final class Manifest
     private const PARAMETER_TYPES = ['enum', 'path', 'token', 'pattern', 'int'];
 
     /**
+     * What a screenshot may be. No SVG: it can carry script, the same reason
+     * it is absent from what a theme may ship beside its stylesheet.
+     */
+    private const SCREENSHOT_TYPES = ['png', 'jpg', 'jpeg', 'webp', 'avif', 'gif'];
+
+    /** Up to six pictures on a card; more than that is a page that scrolls. */
+    private const SCREENSHOT_LIMIT = 6;
+
+    /**
      * @param array<mixed> $raw
      */
     private function __construct(
@@ -160,6 +169,7 @@ final class Manifest
         $errors = [...$errors, ...self::validateUi(Arr::get($data, 'ui', []))];
         $errors = [...$errors, ...self::validateSlots(Arr::get($data, 'slots', []))];
         $errors = [...$errors, ...self::validateTheme(Arr::get($data, 'theme'))];
+        $errors = [...$errors, ...self::validateScreenshots(Arr::get($data, 'screenshots', []))];
         $errors = [...$errors, ...self::validateCommands($data)];
 
         return $errors;
@@ -531,6 +541,97 @@ final class Manifest
     }
 
     /**
+     * Pictures of the plugin, shipped with it.
+     *
+     * A path is checked the way the theme stylesheet is: relative, inside the
+     * plugin, and of a type the panel will actually serve. Not SVG, and never
+     * a remote URL - the panel serves these itself rather than sending every
+     * administrator's browser to fetch an address a manifest chose.
+     *
+     * @return list<string>
+     */
+    private static function validateScreenshots(mixed $screenshots): array
+    {
+        if ($screenshots === [] || $screenshots === null) {
+            return [];
+        }
+
+        if (!is_array($screenshots) || !array_is_list($screenshots)) {
+            return ['"screenshots" must be an array.'];
+        }
+
+        if (count($screenshots) > self::SCREENSHOT_LIMIT) {
+            return [sprintf(
+                '"screenshots" has %d entries; only the first %d are ever shown.',
+                count($screenshots),
+                self::SCREENSHOT_LIMIT
+            )];
+        }
+
+        $errors = [];
+
+        foreach ($screenshots as $index => $screenshot) {
+            $path = is_string($screenshot) ? $screenshot : (is_array($screenshot) ? ($screenshot['path'] ?? null) : null);
+
+            if (!is_string($path) || $path === '') {
+                $errors[] = sprintf('"screenshots[%d]" must be a path, or an object with a "path".', $index);
+
+                continue;
+            }
+
+            $error = self::screenshotPathError($path);
+
+            if ($error !== null) {
+                $errors[] = sprintf('"screenshots[%d].path" %s', $index, $error);
+            }
+
+            if (!is_array($screenshot)) {
+                continue;
+            }
+
+            $dark = $screenshot['dark'] ?? null;
+
+            if ($dark !== null) {
+                $error = is_string($dark) ? self::screenshotPathError($dark) : 'must be a string.';
+
+                if ($error !== null) {
+                    $errors[] = sprintf('"screenshots[%d].dark" %s', $index, $error);
+                }
+            }
+
+            if (isset($screenshot['caption']) && !is_string($screenshot['caption'])) {
+                $errors[] = sprintf('"screenshots[%d].caption" must be a string.', $index);
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * What is wrong with a screenshot path, or null if it is fine.
+     *
+     * Shared between the light path and its dark counterpart: the same file
+     * is served the same way regardless of which appearance asked for it.
+     */
+    private static function screenshotPathError(string $path): ?string
+    {
+        if (str_contains($path, '..') || str_starts_with($path, '/')) {
+            return 'must stay inside the plugin directory.';
+        }
+
+        $extension = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
+
+        if (!in_array($extension, self::SCREENSHOT_TYPES, true)) {
+            return sprintf(
+                'must be one of: %s. Not SVG, which can carry script.',
+                implode(', ', self::SCREENSHOT_TYPES)
+            );
+        }
+
+        return null;
+    }
+
+    /**
      * The commands a plugin asks to run in an account.
      *
      * These are the highest-consequence lines in a manifest, and they are the
@@ -890,6 +991,44 @@ final class Manifest
             'panels' => is_array($panels) ? array_values(array_map('strval', $panels)) : [],
             'description' => is_string($theme['description'] ?? null) ? $theme['description'] : null,
         ];
+    }
+
+    /**
+     * Pictures of the plugin, as declared. Empty when the manifest says
+     * nothing - the panel then falls back to reading the plugin's
+     * screenshots/ directory itself, which this SDK has no filesystem access
+     * to assume the layout of.
+     *
+     * @return list<array{path: string, dark: ?string, caption: ?string}>
+     */
+    public function screenshots(): array
+    {
+        $screenshots = $this->raw['screenshots'] ?? [];
+
+        if (!is_array($screenshots)) {
+            return [];
+        }
+
+        $parsed = [];
+
+        foreach ($screenshots as $screenshot) {
+            $path = is_string($screenshot) ? $screenshot : (is_array($screenshot) ? ($screenshot['path'] ?? null) : null);
+
+            if (!is_string($path) || $path === '') {
+                continue;
+            }
+
+            $dark = is_array($screenshot) ? ($screenshot['dark'] ?? null) : null;
+            $caption = is_array($screenshot) ? ($screenshot['caption'] ?? null) : null;
+
+            $parsed[] = [
+                'path' => $path,
+                'dark' => is_string($dark) && $dark !== '' ? $dark : null,
+                'caption' => is_string($caption) && trim($caption) !== '' ? trim($caption) : null,
+            ];
+        }
+
+        return $parsed;
     }
 
     /**
