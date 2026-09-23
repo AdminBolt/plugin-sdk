@@ -654,7 +654,7 @@ final class Manifest
         }
 
         if (!is_array($provision) || array_is_list($provision)) {
-            return ['"provision" must be an object keyed by install, update or uninstall.'];
+            return ['"provision" must be an object keyed by install, update, uninstall or the name of an action.'];
         }
 
         $settings = [];
@@ -670,8 +670,13 @@ final class Manifest
         foreach ($provision as $action => $step) {
             $label = sprintf('"provision.%s"', $action);
 
-            if (!in_array($action, ['install', 'update', 'uninstall'], true)) {
-                $errors[] = $label . ' is not a moment the panel runs anything at. Use install, update or uninstall.';
+            $lifecycle = in_array($action, ['install', 'update', 'uninstall'], true);
+
+            // Anything else is an action an administrator runs by hand from
+            // the panel, so it is a name the panel can store and a button it
+            // can label.
+            if (!$lifecycle && (!is_string($action) || preg_match('/^[a-z][a-z0-9-]{1,15}$/', $action) !== 1)) {
+                $errors[] = $label . ' is neither install, update or uninstall nor an action name: lower-case letters, digits and hyphens, up to 16 characters.';
 
                 continue;
             }
@@ -696,6 +701,14 @@ final class Manifest
                 } elseif (preg_match('/^[A-Za-z0-9._:\/@+=,-]*$/', $arg) !== 1) {
                     $errors[] = sprintf('%s.args[%d] may only be a {setting} or a plain value: letters, digits and . _ : / @ + = , -', $label, $i);
                 }
+            }
+
+            $stepLabel = $step['label'] ?? null;
+
+            if ($stepLabel !== null && (!is_string($stepLabel) || trim($stepLabel) === '' || mb_strlen($stepLabel) > 80)) {
+                $errors[] = $label . '.label must be a string of up to 80 characters.';
+            } elseif (!$lifecycle && $stepLabel === null) {
+                $errors[] = $label . '.label is required: it is the button an administrator presses.';
             }
 
             $timeout = $step['timeout'] ?? null;

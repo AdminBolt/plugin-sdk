@@ -58,7 +58,7 @@
         },
         "provision": {
             "type": "object",
-            "description": "Scripts the panel runs as root, after an administrator approves them, to set the server up for the plugin.",
+            "description": "Scripts the panel runs as root, after an administrator approves them: at install, update and uninstall, and any other key as an action an administrator runs by hand from the panel.",
             "additionalProperties": false,
             "properties": {
                 "install": {
@@ -69,6 +69,20 @@
                 },
                 "uninstall": {
                     "$ref": "#/definitions/provisionStep"
+                }
+            },
+            "patternProperties": {
+                "^(?!install$|update$|uninstall$)[a-z][a-z0-9-]{1,15}$": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/provisionStep"
+                        },
+                        {
+                            "required": [
+                                "label"
+                            ]
+                        }
+                    ]
                 }
             }
         },
@@ -719,6 +733,12 @@
                     "maximum": 3600,
                     "default": 900,
                     "description": "Seconds before the script is stopped."
+                },
+                "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80,
+                    "description": "What the administrator reads. Required on an action run by hand: it is the button's label."
                 }
             }
         }

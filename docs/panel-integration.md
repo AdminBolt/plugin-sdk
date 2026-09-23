@@ -142,6 +142,13 @@ under `timeout`. Output goes to `var/logs/provision-<run>.log` in the plugin,
 which the panel reads while the script runs and keeps on the
 `plugin_provision_runs` row afterwards.
 
+A step under any other key is an action, queued the same way when an
+administrator presses its button under *Server setup*. Every run gets
+`BOLT_SECRET_FILE`, a path under `/var/lib/bolt-plugin-secrets` (root, 0700).
+After a successful run the runner reads that file back through the agent,
+deletes it, and stores what it held on the run's `secret` column, encrypted,
+until an administrator dismisses it.
+
 ## Rendering plugin pages
 
 Each `ui` entry in a manifest becomes a Filament page registered on the panel

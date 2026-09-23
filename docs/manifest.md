@@ -214,12 +214,36 @@ system service or a firewall port goes here instead:
 | `script` | required | A `.sh` file inside the plugin. It runs with bash, as root, from the plugin's directory. |
 | `args` | `[]` | Plain values, or `{setting}` to pass the value of one of the plugin's [settings](#settings). |
 | `timeout` | `900` | Seconds, 10 to 3600. The script is stopped after it. |
+| `label` | | What the administrator reads. Required on an action. |
 
 When they run:
 
 - **install** once an administrator installs the plugin, and again when they press *Run setup again* on its card.
 - **update** after an update to a new version.
 - **uninstall** before the panel deletes the plugin's files. The uninstall goes ahead whatever it returns.
+- **any other key** is an action: a button under *Server setup* that an
+  administrator presses, after a confirmation. The name is lower-case letters,
+  digits and hyphens, up to 16 characters, and the `label` is the button. The
+  plugin itself can never run one.
+
+```json
+"reset-admin": { "script": "provision/reset-admin.sh", "label": "Reset the Grafana admin sign-in", "timeout": 120 }
+```
+
+### Handing the administrator a secret
+
+What a script prints is kept in the plugin's own `var/logs`, which the plugin
+can read, so a password never goes there. The panel gives every run a
+`BOLT_SECRET_FILE` in its environment instead: a path in a directory only root
+can read. Whatever the script writes to it, up to 4 KB, the panel collects
+after a successful run, deletes from the disk and shows once, to
+administrators, on that run under *Server setup*, until one of them presses
+*Forget it*.
+
+```bash
+umask 077
+printf 'Sign in as admin with %s\n' "$PASSWORD" > "$BOLT_SECRET_FILE"
+```
 
 The approval screen shows each script with its SHA-256, and the approval is
 recorded against that hash. A script that changes, even under the same name
