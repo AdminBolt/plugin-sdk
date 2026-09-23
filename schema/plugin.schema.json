@@ -54,7 +54,7 @@
         },
         "icon": {
             "type": "string",
-            "description": "Heroicon name, for example heroicon-o-globe-alt."
+            "description": "Heroicon name, for example heroicon-o-globe-alt, or a path to a png, jpg, webp, avif or gif inside the plugin, for example icon.png. Not SVG."
         },
         "category": {
             "type": "string",

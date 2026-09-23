@@ -170,6 +170,7 @@ final class Manifest
         $errors = [...$errors, ...self::validateSlots(Arr::get($data, 'slots', []))];
         $errors = [...$errors, ...self::validateTheme(Arr::get($data, 'theme'))];
         $errors = [...$errors, ...self::validateScreenshots(Arr::get($data, 'screenshots', []))];
+        $errors = [...$errors, ...self::validateIcon(Arr::get($data, 'icon'))];
         $errors = [...$errors, ...self::validateCommands($data)];
 
         return $errors;
@@ -605,6 +606,47 @@ final class Manifest
         }
 
         return $errors;
+    }
+
+    /**
+     * The plugin's icon: a Heroicon name, or an image shipped inside the
+     * plugin, held to the same rules as a screenshot.
+     *
+     * @return list<string>
+     */
+    private static function validateIcon(mixed $icon): array
+    {
+        if ($icon === null) {
+            return [];
+        }
+
+        if (!is_string($icon) || $icon === '') {
+            return ['"icon" must be a Heroicon name or a path to an image inside the plugin.'];
+        }
+
+        if (self::isHeroicon($icon)) {
+            return [];
+        }
+
+        $error = self::screenshotPathError($icon);
+
+        return $error === null ? [] : [sprintf('"icon" %s', $error)];
+    }
+
+    private static function isHeroicon(string $icon): bool
+    {
+        return preg_match('/^heroicon-[oms]-[a-z0-9-]+$/', $icon) === 1;
+    }
+
+    /**
+     * The icon image's path inside the plugin, or null when the icon is a
+     * Heroicon name or there is none.
+     */
+    public function iconPath(): ?string
+    {
+        $icon = $this->raw['icon'] ?? null;
+
+        return is_string($icon) && $icon !== '' && !self::isHeroicon($icon) ? $icon : null;
     }
 
     /**

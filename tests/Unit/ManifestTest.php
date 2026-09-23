@@ -405,4 +405,24 @@ final class ManifestTest extends TestCase
         self::assertSame([], Manifest::validate($this->valid(['api' => ['scopes' => ['admin:hosting-accounts:read', 'client:dns-records:write']]])));
         self::assertNotSame([], Manifest::validate($this->valid(['api' => ['scopes' => ['everything']]])));
     }
+
+    public function test_an_icon_is_a_heroicon_or_an_image_inside_the_plugin(): void
+    {
+        self::assertSame([], Manifest::validate($this->valid(['icon' => 'heroicon-o-chat-bubble-left-right'])));
+        self::assertSame([], Manifest::validate($this->valid(['icon' => 'icon.png'])));
+        self::assertSame([], Manifest::validate($this->valid(['icon' => 'assets/logo.webp'])));
+
+        // SVG can carry script, and a path must not leave the plugin.
+        self::assertNotSame([], Manifest::validate($this->valid(['icon' => 'icon.svg'])));
+        self::assertNotSame([], Manifest::validate($this->valid(['icon' => '../../etc/logo.png'])));
+        self::assertNotSame([], Manifest::validate($this->valid(['icon' => '/etc/logo.png'])));
+        self::assertNotSame([], Manifest::validate($this->valid(['icon' => 42])));
+    }
+
+    public function test_only_an_image_icon_has_a_path(): void
+    {
+        self::assertSame('icon.png', Manifest::fromArray($this->valid(['icon' => 'icon.png']))->iconPath());
+        self::assertNull(Manifest::fromArray($this->valid(['icon' => 'heroicon-o-bolt']))->iconPath());
+        self::assertNull(Manifest::fromArray($this->valid())->iconPath());
+    }
 }

@@ -16,7 +16,7 @@ inline errors.
 | `author` | no | `name`, `email`, `url`. |
 | `license` | no | SPDX identifier. |
 | `homepage` | no | Where to file a bug. |
-| `icon` | no | Heroicon name, for example `heroicon-o-globe-alt`. |
+| `icon` | no | Heroicon name, for example `heroicon-o-globe-alt`, or the plugin's own image, for example `icon.png`: a square png, jpg, webp, avif or gif inside the plugin, 256×256 is plenty. Not SVG, for the reason screenshots are not. |
 
 ## How it is listed
 
