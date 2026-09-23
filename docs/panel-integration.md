@@ -1,17 +1,34 @@
 # What the panel implements
 
-This is the panel-side half of the contract, for whoever builds the plugin
-host in bolt-panel. Plugin authors do not need it.
+This is the panel-side half of the contract, as bolt-panel implements it.
+Plugin authors do not need it; it is here so the two halves can be checked
+against each other.
 
 ## The pieces
 
-1. **A registry.** `plugins` and `plugin_hooks` tables: id, version, path,
-   transport, listen address, enabled, failure policy, hook secret, api_key_id.
-2. **An installer.** Fetch, validate the manifest, create the system user,
-   create the directory, mint the API key, write `runtime.json`, register the
-   declared hooks, start the listener, deliver `plugin.installed`.
-3. **A dispatcher.** Turns a panel event into a signed delivery.
-4. **A UI.** Install, configure, enable and disable, plus the delivery log.
+1. **A registry.** The plugin directory on disk is the list of plugins (one
+   `plugin.json` per directory, no registry file). `plugin_installations`
+   records what an administrator approved: scopes, commands and hooks, the
+   version they saw, the API key, and the operator's settings (encrypted).
+2. **An installer.** From the marketplace or the plugin directory: validate
+   the manifest, mint the API key, write `runtime.json`, serve the listener
+   with the panel's own nginx and a per-plugin PHP-FPM pool, record the
+   approval, deliver `plugin.installed`.
+3. **A dispatcher.** `App\Plugins\Hooks\PluginHookDispatcher` turns panel
+   events into signed deliveries, and `App\Listeners\PluginHookBridge` maps
+   the panel's events onto notification hooks.
+4. **A UI.** The Plugins page installs, approves, configures, updates,
+   deactivates and uninstalls, and shows each plugin's delivery log.
+
+| Piece | Where |
+| --- | --- |
+| Hook catalogue (kept in step with `Hook`) | `app/Plugins/Hooks/PluginHook.php` |
+| Blocking and notification dispatch | `app/Plugins/Hooks/PluginHookDispatcher.php` |
+| Queued delivery with retries | `app/Jobs/DeliverPluginHook.php` |
+| Delivery log | `plugin_hook_deliveries`, `App\Models\PluginHookDelivery` |
+| Signed transport | `app/Plugins/PluginClient.php` |
+| Key minting and scope mapping | `app/Plugins/PluginKeyMinter.php` |
+| Settings | `PluginProvisioner::writeSettings()`, the Configure action on the Plugins page |
 
 ## Minting the key
 
@@ -20,9 +37,13 @@ false and `allowed_endpoints` derived from the manifest scopes. The existing
 `ApiKey::canAccessEndpoint()` already enforces the `uri|METHOD` list, so
 scoping needs a scope-to-endpoint mapping and nothing new in the middleware.
 
-`owner_type` follows the scopes: a plugin declaring only `client:*` gets a
-hosting-account or reseller key, and only a plugin declaring `admin:*` gets an
-admin key. Never mint an admin key for a plugin that did not ask for one.
+Every plugin key is marked with the plugin's id and carries only the endpoints
+its approved scopes map to. A client-API call must also carry the account grant
+the panel put in the envelope (`X-Plugin-Account-Grant`), so a plugin acts on
+the account the panel named and cannot choose one. An `admin:*` scope maps onto
+the admin API where it actually lives: `/api/hosting-accounts`,
+`/api/hosting-account/<resource>` and `/api/admin/<resource>`, and only routes
+behind the admin key middleware.
 
 Rotate the key and the hook secret on demand and on every upgrade. Rewrite
 `runtime.json` afterwards, and sign with both secrets during the overlap so
@@ -30,10 +51,10 @@ in-flight deliveries do not fail.
 
 ## Dispatching notification hooks
 
-Most of these already exist as events. The bridge is one subscriber that maps
+Each is a panel event. The bridge, `PluginHookBridge`, is one subscriber that maps
 an event to a delivery:
 
-| Hook | Existing event |
+| Hook | Panel event |
 | --- | --- |
 | `domain.created` | `DomainProvisioned` |
 | `domain.deleted` | `DomainWasDeleted` |
@@ -45,21 +66,39 @@ an event to a delivery:
 | `dns_record.updated` | `DnsRecordUpdated` |
 | `dns_record.deleted` | `DnsRecordDeleted` |
 | `webserver.switched` | `WebServerSwitched` |
+| `account.suspended` | `HostingAccountSuspended` |
+| `account.unsuspended` | `HostingAccountUnsuspended` |
+| `email_account.created` | `EmailAccountCreated` |
+| `email_account.deleted` | `EmailAccountDeleted` |
+| `database.created` | `DatabaseCreated` |
+| `database.deleted` | `DatabaseDeleted` |
+| `certificate.issued` | `CertificateIssued` |
 
 Delivery is queued, never inline. These events already run inside completed
 operations that must not fail, and an HTTP call to a plugin is exactly the
 kind of thing that would break them.
 
-Suspension, email, database and TLS hooks need new events, following the same
-shape as the existing ones.
+Deliveries are dispatched after the surrounding transaction commits, so a
+plugin is never told about an operation that rolled back.
 
 ## Dispatching blocking hooks
 
 These are new dispatch points, and they go in the service, not the controller,
 so that the API, the UI and the CLI all fire them.
 
-For domain creation that is the top of `DomainCreationService::create()`,
-before the database record exists. The call returns a decision:
+They are asked from:
+
+| Hook | Service |
+| --- | --- |
+| `domain.creating` | `DomainCreationService`, per domain type, after the panel's own checks and before the row exists |
+| `domain.deleting` | `DomainDeletionService::delete()`, before any teardown, and not when the whole account is going |
+| `account.creating` | `HostingAccountCreationService::create()`, before the reseller limits, so a plan a plugin chose is held to them |
+| `account.deleting` | `HostingAccountDeletionService::delete()`, before `HostingAccountDeletionStarted` |
+| `dns_record.creating` | `DNSRecordService::create()` with `askPlugins: true`, which only the person-facing callers pass |
+| `email_account.creating` | `EmailAccountService::create()`, before the plan's quota cap is checked |
+| `database.creating` | `DatabaseService::create()`, once the name is final |
+
+The call returns a decision:
 
 - **reject** aborts. Return a failed `ServiceResponseData` carrying the
   plugin's message, so the user sees why.
