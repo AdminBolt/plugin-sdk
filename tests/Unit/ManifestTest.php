@@ -446,4 +446,24 @@ final class ManifestTest extends TestCase
             self::assertNotSame([], Manifest::validate($this->valid($settings + ['provision' => $provision])), json_encode($provision));
         }
     }
+
+    /**
+     * Any other key is a button an administrator presses, so it needs a name
+     * the panel can store and a label to put on the button.
+     */
+    public function test_a_provision_action_run_by_hand_is_named_and_labelled(): void
+    {
+        self::assertSame([], Manifest::validate($this->valid(['provision' => [
+            'reset-admin' => ['script' => 'provision/reset-admin.sh', 'label' => 'Reset the admin sign-in', 'timeout' => 120],
+        ]])));
+
+        foreach ([
+            ['reset-admin' => ['script' => 'provision/reset-admin.sh']],
+            ['reset-admin' => ['script' => 'provision/reset-admin.sh', 'label' => '']],
+            ['Reset Admin' => ['script' => 'provision/reset-admin.sh', 'label' => 'Reset']],
+            ['a-name-far-too-long-to-store' => ['script' => 'provision/reset-admin.sh', 'label' => 'Reset']],
+        ] as $provision) {
+            self::assertNotSame([], Manifest::validate($this->valid(['provision' => $provision])), json_encode($provision));
+        }
+    }
 }
