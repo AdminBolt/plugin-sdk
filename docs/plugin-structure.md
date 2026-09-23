@@ -179,6 +179,44 @@ running plugin, which is the fastest way to see a handler run for real.
 
 ## Publishing
 
-Tag a release and the panel can install it from a Git URL, a release tarball,
-or the plugin directory. Nothing needs to be added to the panel, and no panel
-release is involved.
+A plugin ships on its own schedule. Nothing is added to the panel and no panel
+release is involved: an operator installs it, approves what it asks for, and it
+starts working.
+
+There are two ways onto a server.
+
+**The marketplace.** Panels browse, install and update plugins from the
+AdminBolt plugin marketplace, from the Plugins page. To publish there:
+
+1. Build the archive. `bolt-plugin package` validates the manifest, refuses
+   anything that would carry credentials (`runtime.json`, `.env`, `var/`), and
+   writes `build/<id>-<version>.tar.gz`.
+2. Upload it with an API token issued for your marketplace account:
+
+   ```sh
+   curl -H "Authorization: Bearer $PLATFORM_TOKEN" -H "Accept: application/json" \
+        -F archive=@build/acme-widgets-1.2.0.tar.gz -F changelog="What changed" \
+        https://plugins.adminbolt.com/api/v1/publish
+   ```
+
+   The first archive for an id creates the listing under your account, and
+   every later one needs a higher `version` in `plugin.json`. Re-uploading the
+   exact same archive is a no-op (`200`), so a re-run CI job is harmless; a
+   different archive under an existing version is refused (`409`).
+3. Screenshots are a separate upload, `POST /api/v1/plugins/{id}/images`, one
+   image per request. The archive panels download stays free of them.
+
+A new version waits for review before panels are offered it, unless your
+account is verified for automatic approval. The marketplace's own
+[API reference](https://github.com/AdminBolt/plugins-platform-app/blob/main/docs/api.md)
+has every status code; the official plugins' `publish.yml` workflows are a
+working CI setup to copy.
+
+**By hand.** Unpack the archive into the panel's plugin directory
+(`/usr/local/bolt/plugins/<id>`), and it appears on the Plugins page ready to
+install. This is what development and private plugins do.
+
+Either way, what an operator approved is recorded against the version they saw.
+An update that asks for a new API scope, a new or changed command, or a hook on
+new terms (a new subscription, one that became blocking, one that now fails
+closed) stays off until somebody approves it again.
