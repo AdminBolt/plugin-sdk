@@ -425,4 +425,25 @@ final class ManifestTest extends TestCase
         self::assertNull(Manifest::fromArray($this->valid(['icon' => 'heroicon-o-bolt']))->iconPath());
         self::assertNull(Manifest::fromArray($this->valid())->iconPath());
     }
+
+    public function test_provision_scripts_are_shell_scripts_inside_the_plugin_fed_by_settings(): void
+    {
+        $settings = ['settings' => [['key' => 'port', 'type' => 'int', 'default' => 47474]]];
+
+        self::assertSame([], Manifest::validate($this->valid($settings + ['provision' => [
+            'install' => ['script' => 'provision/install.sh', 'args' => ['oss', '{port}'], 'timeout' => 900],
+            'uninstall' => ['script' => 'provision/uninstall.sh', 'args' => ['{port}', 'false']],
+        ]])));
+
+        foreach ([
+            ['install' => ['script' => '../../etc/x.sh']],
+            ['install' => ['script' => 'provision/install.py']],
+            ['install' => ['script' => 'provision/install.sh', 'args' => ['{nope}']]],
+            ['install' => ['script' => 'provision/install.sh', 'args' => ['$(reboot)']]],
+            ['install' => ['script' => 'provision/install.sh', 'timeout' => 99999]],
+            ['reboot' => ['script' => 'provision/install.sh']],
+        ] as $provision) {
+            self::assertNotSame([], Manifest::validate($this->valid($settings + ['provision' => $provision])), json_encode($provision));
+        }
+    }
 }
