@@ -170,6 +170,8 @@ final class Manifest
         $errors = [...$errors, ...self::validateSlots(Arr::get($data, 'slots', []))];
         $errors = [...$errors, ...self::validateTheme(Arr::get($data, 'theme'))];
         $errors = [...$errors, ...self::validateScreenshots(Arr::get($data, 'screenshots', []))];
+        $errors = [...$errors, ...self::validateIcon(Arr::get($data, 'icon'))];
+        $errors = [...$errors, ...self::validateProvision($data)];
         $errors = [...$errors, ...self::validateCommands($data)];
 
         return $errors;
@@ -605,6 +607,121 @@ final class Manifest
         }
 
         return $errors;
+    }
+
+    /**
+     * The plugin's icon: a Heroicon name, or an image shipped inside the
+     * plugin, held to the same rules as a screenshot.
+     *
+     * @return list<string>
+     */
+    private static function validateIcon(mixed $icon): array
+    {
+        if ($icon === null) {
+            return [];
+        }
+
+        if (!is_string($icon) || $icon === '') {
+            return ['"icon" must be a Heroicon name or a path to an image inside the plugin.'];
+        }
+
+        if (self::isHeroicon($icon)) {
+            return [];
+        }
+
+        $error = self::screenshotPathError($icon);
+
+        return $error === null ? [] : [sprintf('"icon" %s', $error)];
+    }
+
+    /**
+     * Scripts the panel runs as root to set the server up for the plugin.
+     *
+     * The panel shows each one to an administrator and records the approval
+     * against its SHA-256, so what is validated here is what can be approved:
+     * a shell script inside the plugin, and arguments that are either plain
+     * literals or a {setting} the plugin declares.
+     *
+     * @param  array<mixed> $data
+     * @return list<string>
+     */
+    private static function validateProvision(array $data): array
+    {
+        $provision = Arr::get($data, 'provision');
+
+        if ($provision === null) {
+            return [];
+        }
+
+        if (!is_array($provision) || array_is_list($provision)) {
+            return ['"provision" must be an object keyed by install, update or uninstall.'];
+        }
+
+        $settings = [];
+
+        foreach ((array) Arr::get($data, 'settings', []) as $setting) {
+            if (is_array($setting) && is_string($setting['key'] ?? null)) {
+                $settings[] = $setting['key'];
+            }
+        }
+
+        $errors = [];
+
+        foreach ($provision as $action => $step) {
+            $label = sprintf('"provision.%s"', $action);
+
+            if (!in_array($action, ['install', 'update', 'uninstall'], true)) {
+                $errors[] = $label . ' is not a moment the panel runs anything at. Use install, update or uninstall.';
+
+                continue;
+            }
+
+            if (!is_array($step) || !is_string($step['script'] ?? null)) {
+                $errors[] = $label . '.script is required: the path to a shell script inside the plugin.';
+
+                continue;
+            }
+
+            if (str_contains($step['script'], '..') || preg_match('#^[A-Za-z0-9][A-Za-z0-9._/-]*\.sh$#', $step['script']) !== 1) {
+                $errors[] = $label . '.script must be a .sh file inside the plugin, for example provision/install.sh.';
+            }
+
+            foreach ((array) ($step['args'] ?? []) as $i => $arg) {
+                if (!is_string($arg)) {
+                    $errors[] = sprintf('%s.args[%d] must be a string.', $label, $i);
+                } elseif (preg_match('/^\{([a-z][a-z0-9_]*)\}$/', $arg, $m) === 1) {
+                    if (!in_array($m[1], $settings, true)) {
+                        $errors[] = sprintf('%s.args[%d] names the setting "%s", which the manifest does not declare.', $label, $i, $m[1]);
+                    }
+                } elseif (preg_match('/^[A-Za-z0-9._:\/@+=,-]*$/', $arg) !== 1) {
+                    $errors[] = sprintf('%s.args[%d] may only be a {setting} or a plain value: letters, digits and . _ : / @ + = , -', $label, $i);
+                }
+            }
+
+            $timeout = $step['timeout'] ?? null;
+
+            if ($timeout !== null && (!is_int($timeout) || $timeout < 10 || $timeout > 3600)) {
+                $errors[] = $label . '.timeout must be an integer between 10 and 3600 seconds.';
+            }
+        }
+
+        return $errors;
+    }
+
+    private static function isHeroicon(string $icon): bool
+    {
+        return preg_match('/^heroicon-[oms]-[a-z0-9-]+$/', $icon) === 1;
+    }
+
+    /**
+     * The icon image's path inside the plugin, or null when the icon is a
+     * Heroicon name or there is none.
+     */
+    public function iconPath(): ?string
+    {
+        $icon = $this->raw['icon'] ?? null;
+
+        return is_string($icon) && $icon !== '' && !self::isHeroicon($icon) ? $icon : null;
     }
 
     /**

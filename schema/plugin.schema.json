@@ -54,7 +54,23 @@
         },
         "icon": {
             "type": "string",
-            "description": "Heroicon name, for example heroicon-o-globe-alt."
+            "description": "Heroicon name, for example heroicon-o-globe-alt, or a path to a png, jpg, webp, avif or gif inside the plugin, for example icon.png. Not SVG."
+        },
+        "provision": {
+            "type": "object",
+            "description": "Scripts the panel runs as root, after an administrator approves them, to set the server up for the plugin.",
+            "additionalProperties": false,
+            "properties": {
+                "install": {
+                    "$ref": "#/definitions/provisionStep"
+                },
+                "update": {
+                    "$ref": "#/definitions/provisionStep"
+                },
+                "uninstall": {
+                    "$ref": "#/definitions/provisionStep"
+                }
+            }
         },
         "category": {
             "type": "string",
@@ -672,6 +688,37 @@
                         "default": false,
                         "description": "Run it as a job the plugin polls, for anything that outlives a request."
                     }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "provisionStep": {
+            "type": "object",
+            "required": [
+                "script"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "script": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*\\.sh$",
+                    "description": "A shell script inside the plugin, for example provision/install.sh."
+                },
+                "args": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "pattern": "^(\\{[a-z][a-z0-9_]*\\}|[A-Za-z0-9._:/@+=,-]*)$"
+                    },
+                    "description": "Plain values, or {setting} to pass one of the plugin's settings."
+                },
+                "timeout": {
+                    "type": "integer",
+                    "minimum": 10,
+                    "maximum": 3600,
+                    "default": 900,
+                    "description": "Seconds before the script is stopped."
                 }
             }
         }

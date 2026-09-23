@@ -444,7 +444,12 @@ final class Plugin
             ]);
         }
 
-        $undeclaredPages = array_diff($this->ui->pageSlugs(), $this->manifest->pageSlugs());
+        // A slot registers as a page does, so the manifest's slots count too.
+        $undeclaredPages = array_diff(
+            $this->ui->pageSlugs(),
+            $this->manifest->pageSlugs(),
+            $this->manifest->slotSlugs()
+        );
 
         if ($undeclaredPages !== []) {
             // Nothing links to them, so nobody will ever open them.

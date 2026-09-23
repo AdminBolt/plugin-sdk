@@ -129,6 +129,19 @@ Exponential backoff, a handful of attempts, then park the delivery in the log.
 Disable a plugin automatically only after sustained failure, and say so
 loudly: a silently disabled billing plugin is worse than a failing one.
 
+## Provisioning
+
+`provision` scripts run as root through the agent's command endpoint, from a
+queued job (`App\Jobs\RunPluginProvision`) for install and update, and inline
+for uninstall, before the files are deleted. `PluginProvisionRunner` checks the
+step is still approved as it is on disk, fills `{setting}` arguments from the
+saved settings over the declared defaults, refuses any value outside the safe
+character set, and hands the agent one command that `cd`s into the plugin,
+checks the file's SHA-256 with `sha256sum --check`, and only then runs it,
+under `timeout`. Output goes to `var/logs/provision-<run>.log` in the plugin,
+which the panel reads while the script runs and keeps on the
+`plugin_provision_runs` row afterwards.
+
 ## Rendering plugin pages
 
 Each `ui` entry in a manifest becomes a Filament page registered on the panel

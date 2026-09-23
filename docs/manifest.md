@@ -16,7 +16,7 @@ inline errors.
 | `author` | no | `name`, `email`, `url`. |
 | `license` | no | SPDX identifier. |
 | `homepage` | no | Where to file a bug. |
-| `icon` | no | Heroicon name, for example `heroicon-o-globe-alt`. |
+| `icon` | no | Heroicon name, for example `heroicon-o-globe-alt`, or the plugin's own image, for example `icon.png`: a square png, jpg, webp, avif or gif inside the plugin, 256×256 is plenty. Not SVG, for the reason screenshots are not. |
 
 ## How it is listed
 
@@ -194,6 +194,47 @@ could run, and the scope is what the administrator actually approves.
 
 Full detail, including what the panel checks before it spawns anything, is in
 [commands.md](commands.md).
+
+## `provision`
+
+Scripts that set the server up for the plugin, run as root by the panel.
+A plugin runs as an unprivileged user, so anything that needs a package, a
+system service or a firewall port goes here instead:
+
+```json
+"provision": {
+    "install":   { "script": "provision/install.sh",   "args": ["{edition}", "{port}"], "timeout": 900 },
+    "update":    { "script": "provision/update.sh",    "timeout": 600 },
+    "uninstall": { "script": "provision/uninstall.sh", "args": ["{port}", "false"], "timeout": 300 }
+}
+```
+
+| Field | Default | Notes |
+| --- | --- | --- |
+| `script` | required | A `.sh` file inside the plugin. It runs with bash, as root, from the plugin's directory. |
+| `args` | `[]` | Plain values, or `{setting}` to pass the value of one of the plugin's [settings](#settings). |
+| `timeout` | `900` | Seconds, 10 to 3600. The script is stopped after it. |
+
+When they run:
+
+- **install** once an administrator installs the plugin, and again when they press *Run setup again* on its card.
+- **update** after an update to a new version.
+- **uninstall** before the panel deletes the plugin's files. The uninstall goes ahead whatever it returns.
+
+The approval screen shows each script with its SHA-256, and the approval is
+recorded against that hash. A script that changes, even under the same name
+and version, keeps the plugin switched off until somebody approves it again,
+and the root shell checks the hash once more immediately before it runs.
+
+Write them to be run more than once: check before each step, as a
+re-run after a failure is the normal way to recover. Everything the script
+prints is kept and shown to the operator under *Server setup* on the
+plugin's card, so say what you are doing and why a step failed. Exit
+non-zero on failure.
+
+A setting passed as an argument is held to letters, digits and
+`. _ : / @ + = , -`; anything else fails the run rather than reaching the
+shell.
 
 ## `ui`
 

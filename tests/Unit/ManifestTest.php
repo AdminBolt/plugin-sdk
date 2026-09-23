@@ -405,4 +405,45 @@ final class ManifestTest extends TestCase
         self::assertSame([], Manifest::validate($this->valid(['api' => ['scopes' => ['admin:hosting-accounts:read', 'client:dns-records:write']]])));
         self::assertNotSame([], Manifest::validate($this->valid(['api' => ['scopes' => ['everything']]])));
     }
+
+    public function test_an_icon_is_a_heroicon_or_an_image_inside_the_plugin(): void
+    {
+        self::assertSame([], Manifest::validate($this->valid(['icon' => 'heroicon-o-chat-bubble-left-right'])));
+        self::assertSame([], Manifest::validate($this->valid(['icon' => 'icon.png'])));
+        self::assertSame([], Manifest::validate($this->valid(['icon' => 'assets/logo.webp'])));
+
+        // SVG can carry script, and a path must not leave the plugin.
+        self::assertNotSame([], Manifest::validate($this->valid(['icon' => 'icon.svg'])));
+        self::assertNotSame([], Manifest::validate($this->valid(['icon' => '../../etc/logo.png'])));
+        self::assertNotSame([], Manifest::validate($this->valid(['icon' => '/etc/logo.png'])));
+        self::assertNotSame([], Manifest::validate($this->valid(['icon' => 42])));
+    }
+
+    public function test_only_an_image_icon_has_a_path(): void
+    {
+        self::assertSame('icon.png', Manifest::fromArray($this->valid(['icon' => 'icon.png']))->iconPath());
+        self::assertNull(Manifest::fromArray($this->valid(['icon' => 'heroicon-o-bolt']))->iconPath());
+        self::assertNull(Manifest::fromArray($this->valid())->iconPath());
+    }
+
+    public function test_provision_scripts_are_shell_scripts_inside_the_plugin_fed_by_settings(): void
+    {
+        $settings = ['settings' => [['key' => 'port', 'type' => 'int', 'default' => 47474]]];
+
+        self::assertSame([], Manifest::validate($this->valid($settings + ['provision' => [
+            'install' => ['script' => 'provision/install.sh', 'args' => ['oss', '{port}'], 'timeout' => 900],
+            'uninstall' => ['script' => 'provision/uninstall.sh', 'args' => ['{port}', 'false']],
+        ]])));
+
+        foreach ([
+            ['install' => ['script' => '../../etc/x.sh']],
+            ['install' => ['script' => 'provision/install.py']],
+            ['install' => ['script' => 'provision/install.sh', 'args' => ['{nope}']]],
+            ['install' => ['script' => 'provision/install.sh', 'args' => ['$(reboot)']]],
+            ['install' => ['script' => 'provision/install.sh', 'timeout' => 99999]],
+            ['reboot' => ['script' => 'provision/install.sh']],
+        ] as $provision) {
+            self::assertNotSame([], Manifest::validate($this->valid($settings + ['provision' => $provision])), json_encode($provision));
+        }
+    }
 }

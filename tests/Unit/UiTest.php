@@ -214,6 +214,51 @@ final class UiTest extends TestCase
         self::assertSame(['purge', 'renew', 'save', 'sync'], $names);
     }
 
+    public function test_a_declared_slot_is_not_reported_as_an_undeclared_page(): void
+    {
+        $logger = new class implements \AdminBolt\Plugin\Logging\Logger {
+            /** @var list<string> */
+            public array $warnings = [];
+
+            public function log(string $level, string $message, array $context = []): void
+            {
+            }
+
+            public function debug(string $message, array $context = []): void
+            {
+            }
+
+            public function info(string $message, array $context = []): void
+            {
+            }
+
+            public function warning(string $message, array $context = []): void
+            {
+                $this->warnings[] = $message;
+            }
+
+            public function error(string $message, array $context = []): void
+            {
+            }
+        };
+
+        $manifest = $this->manifest([
+            'ui' => [['panel' => 'client', 'slug' => 'zones', 'title' => 'Zones']],
+            'slots' => [['panel' => 'client', 'position' => 'footer', 'slug' => 'footer-note']],
+        ]);
+
+        $plugin = Plugin::create($manifest, $this->config(), $logger)
+            ->page('zones', fn () => Page::make('Zones'))
+            ->slot('footer-note', fn () => Page::make('Note'));
+
+        (new \ReflectionMethod($plugin, 'warnAboutGaps'))->invoke($plugin);
+
+        self::assertNotContains(
+            'Pages registered that the manifest does not declare; they will not appear in the panel',
+            $logger->warnings
+        );
+    }
+
     public function test_a_page_slug_must_be_url_safe(): void
     {
         $plugin = Plugin::create($this->manifestWithUi(), $this->config());
