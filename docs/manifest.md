@@ -219,7 +219,7 @@ system service or a firewall port goes here instead:
 When they run:
 
 - **install** once an administrator installs the plugin, and again when they press *Run setup again* on its card.
-- **update** after an update to a new version.
+- **update** after an update to a new version, and after an administrator rolls the plugin back to the version it had before. Write it so it also works going back: it runs the older version's script, against data the newer one may already have changed.
 - **uninstall** before the panel deletes the plugin's files. The uninstall goes ahead whatever it returns.
 - **backup** before every scheduled server backup. See [Backup and restore](#backup-and-restore).
 - **restore** after a server restore, right after **install**. See [Backup and restore](#backup-and-restore).
