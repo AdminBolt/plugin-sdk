@@ -40,7 +40,9 @@ scoping needs a scope-to-endpoint mapping and nothing new in the middleware.
 Every plugin key is marked with the plugin's id and carries only the endpoints
 its approved scopes map to. A client-API call must also carry the account grant
 the panel put in the envelope (`X-Plugin-Account-Grant`), so a plugin acts on
-the account the panel named and cannot choose one. An `admin:*` scope maps onto
+the account the panel named and cannot choose one. A grant from a page or an
+action lasts an hour, one from a slot or a hook ten minutes: use it while
+answering that call, and do not keep it for later work. An `admin:*` scope maps onto
 the admin API where it actually lives: `/api/hosting-accounts`,
 `/api/hosting-account/<resource>` and `/api/admin/<resource>`, and only routes
 behind the admin key middleware.
