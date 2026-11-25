@@ -466,4 +466,21 @@ final class ManifestTest extends TestCase
             self::assertNotSame([], Manifest::validate($this->valid(['provision' => $provision])), json_encode($provision));
         }
     }
+
+    /**
+     * The server backup runs these two by itself, so like install they need
+     * no label.
+     */
+    public function test_backup_and_restore_are_steps_the_panel_runs_with_the_server_backup(): void
+    {
+        self::assertSame([], Manifest::validate($this->valid(['provision' => [
+            'install' => ['script' => 'provision/install.sh'],
+            'backup' => ['script' => 'provision/backup.sh', 'timeout' => 1800],
+            'restore' => ['script' => 'provision/restore.sh', 'timeout' => 1800],
+        ]])));
+
+        self::assertNotSame([], Manifest::validate($this->valid(['provision' => [
+            'backup' => ['script' => '../backup.sh'],
+        ]])));
+    }
 }

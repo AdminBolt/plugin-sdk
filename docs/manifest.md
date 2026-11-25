@@ -221,6 +221,8 @@ When they run:
 - **install** once an administrator installs the plugin, and again when they press *Run setup again* on its card.
 - **update** after an update to a new version.
 - **uninstall** before the panel deletes the plugin's files. The uninstall goes ahead whatever it returns.
+- **backup** before every scheduled server backup. See [Backup and restore](#backup-and-restore).
+- **restore** after a server restore, right after **install**. See [Backup and restore](#backup-and-restore).
 - **any other key** is an action: a button under *Server setup* that an
   administrator presses, after a confirmation. The name is lower-case letters,
   digits and hyphens, up to 16 characters, and the `label` is the button. The
@@ -228,6 +230,44 @@ When they run:
 
 ```json
 "reset-admin": { "script": "provision/reset-admin.sh", "label": "Reset the Grafana admin sign-in", "timeout": 120 }
+```
+
+### Backup and restore
+
+The panel's server backup already takes the plugin's own directory, `var/`
+included, and the panel database that holds its approval and settings. What a
+plugin keeps anywhere else is its own to back up: Matomo's statistics live in
+a MariaDB database, and without these two steps a server restored from a
+backup, or moved to a new machine, comes back with Matomo installed and every
+visit gone.
+
+```json
+"backup":  { "script": "provision/backup.sh",  "timeout": 1800 },
+"restore": { "script": "provision/restore.sh", "timeout": 1800 }
+```
+
+Both get `BOLT_BACKUP_DIR` in their environment: a directory only root can
+read, and the only place the backup takes from.
+
+- **backup** writes everything it needs into `BOLT_BACKUP_DIR`, which is empty
+  when it starts. It runs before every scheduled server backup, and when an
+  administrator runs `bolt:backup-server-config`. If it fails, the backup
+  keeps the data from its last successful run and the administrators are told.
+- **restore** reads it back. It runs after a server restore, on the same
+  server or on a new one, and always after **install**, so whatever install
+  sets up (the application, a database user, a web server entry) is there
+  first. It runs only when the backup holds data for the plugin.
+
+Write both to be run again: a restore can be repeated with
+`bolt:restore-plugin-data`. Keep what goes into the backup to what cannot be
+made again: a database dump and a config file, not the application's own
+code, which install downloads.
+
+```bash
+# provision/backup.sh
+set -euo pipefail
+mysqldump --single-transaction bolt_example > "$BOLT_BACKUP_DIR/database.sql"
+cp /usr/local/bolt/apps/example/config.ini "$BOLT_BACKUP_DIR/"
 ```
 
 ### Handing the administrator a secret

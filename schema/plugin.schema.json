@@ -58,7 +58,7 @@
         },
         "provision": {
             "type": "object",
-            "description": "Scripts the panel runs as root, after an administrator approves them: at install, update and uninstall, and any other key as an action an administrator runs by hand from the panel.",
+            "description": "Scripts the panel runs as root, after an administrator approves them: at install, update and uninstall, before a server backup and after a server restore, and any other key as an action an administrator runs by hand from the panel.",
             "additionalProperties": false,
             "properties": {
                 "install": {
@@ -69,10 +69,18 @@
                 },
                 "uninstall": {
                     "$ref": "#/definitions/provisionStep"
+                },
+                "backup": {
+                    "$ref": "#/definitions/provisionStep",
+                    "description": "Runs before every scheduled server backup. Write whatever the plugin keeps outside its own directory (a database dump, an application's config) into the directory in BOLT_BACKUP_DIR."
+                },
+                "restore": {
+                    "$ref": "#/definitions/provisionStep",
+                    "description": "Runs after a server restore, on the same server or a new one, after install. Put the data back from the directory in BOLT_BACKUP_DIR."
                 }
             },
             "patternProperties": {
-                "^(?!install$|update$|uninstall$)[a-z][a-z0-9-]{1,15}$": {
+                "^(?!install$|update$|uninstall$|backup$|restore$)[a-z][a-z0-9-]{1,15}$": {
                     "allOf": [
                         {
                             "$ref": "#/definitions/provisionStep"
