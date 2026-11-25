@@ -212,9 +212,24 @@ account is verified for automatic approval. The marketplace's own
 has every status code; the official plugins' `publish.yml` workflows are a
 working CI setup to copy.
 
+**From a file.** On the Plugins page, *Upload plugin* takes the same `.zip`
+or `.tar.gz` the marketplace serves, checks it the same way (less the
+marketplace's signature) and puts it in place. This is how a private plugin is
+installed, and how any plugin gets onto a server that cannot reach the
+marketplace. An archive for an id that is already installed is an update. A
+server builder can turn uploads off with `BOLT_PLUGINS_UPLOADS = false` in
+`bolt-config.ini`.
+
 **By hand.** Unpack the archive into the panel's plugin directory
 (`/usr/local/bolt/plugins/<id>`), and it appears on the Plugins page ready to
-install. This is what development and private plugins do.
+install. This is what plugin development does.
+
+Whichever way an update arrives, the panel keeps the version it replaces, and
+the plugin's card offers *Roll back to* that version. Going back keeps the
+plugin's credentials and its `var/`, and runs the older version's **update**
+script. Data the plugin keeps outside its directory is not rolled back, so an
+update that changes it in a way the older version cannot read should say so in
+its changelog.
 
 Either way, what an operator approved is recorded against the version they saw.
 An update that asks for a new API scope, a new or changed command, or a hook on

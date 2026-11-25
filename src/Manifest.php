@@ -654,7 +654,7 @@ final class Manifest
         }
 
         if (!is_array($provision) || array_is_list($provision)) {
-            return ['"provision" must be an object keyed by install, update, uninstall or the name of an action.'];
+            return ['"provision" must be an object keyed by install, update, uninstall, backup, restore or the name of an action.'];
         }
 
         $settings = [];
@@ -670,13 +670,13 @@ final class Manifest
         foreach ($provision as $action => $step) {
             $label = sprintf('"provision.%s"', $action);
 
-            $lifecycle = in_array($action, ['install', 'update', 'uninstall'], true);
+            $lifecycle = in_array($action, ['install', 'update', 'uninstall', 'backup', 'restore'], true);
 
             // Anything else is an action an administrator runs by hand from
             // the panel, so it is a name the panel can store and a button it
             // can label.
             if (!$lifecycle && (!is_string($action) || preg_match('/^[a-z][a-z0-9-]{1,15}$/', $action) !== 1)) {
-                $errors[] = $label . ' is neither install, update or uninstall nor an action name: lower-case letters, digits and hyphens, up to 16 characters.';
+                $errors[] = $label . ' is neither install, update, uninstall, backup or restore nor an action name: lower-case letters, digits and hyphens, up to 16 characters.';
 
                 continue;
             }
