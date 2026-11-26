@@ -80,6 +80,7 @@ bolt-plugin hook domain.creating --payload='{"domain":"example.test"}'
 - [Running commands](docs/commands.md) — declaring what a plugin may run in an account
 - [plugin.json](docs/manifest.md) — every manifest field
 - [What the panel implements](docs/panel-integration.md) — the panel-side half of the contract
+- [Compatibility promise](docs/compatibility.md): how long what you build on keeps working
 
 ## Hooks in one paragraph
 

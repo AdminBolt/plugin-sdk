@@ -84,6 +84,9 @@ Set `panel` whenever the plugin subscribes to a hook that was added in a
 particular release. Without it the install succeeds and the hook never fires,
 which is a much worse failure than a refused install.
 
+How long what a plugin relies on keeps working on newer panels is in the
+[compatibility promise](compatibility.md).
+
 ## `runtime`
 
 | Field | Required | Notes |
