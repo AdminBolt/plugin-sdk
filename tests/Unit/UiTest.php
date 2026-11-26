@@ -196,6 +196,14 @@ final class UiTest extends TestCase
         self::assertStringNotContainsString('hunter2', $result->body);
     }
 
+    public function test_a_row_action_can_be_limited_to_rows_with_a_value(): void
+    {
+        $action = Action::make('enable', 'Turn on')->onlyWhen('status', 'Off', 'Paused');
+
+        self::assertSame(['column' => 'status', 'values' => ['Off', 'Paused']], $action->jsonSerialize()['only_when']);
+        self::assertArrayNotHasKey('only_when', Action::make('show', 'View')->jsonSerialize());
+    }
+
     public function test_a_page_collects_every_action_it_can_trigger(): void
     {
         $page = Page::make('Zones')

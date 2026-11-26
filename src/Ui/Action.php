@@ -25,6 +25,9 @@ final class Action implements \JsonSerializable
 
     private bool $disabled = false;
 
+    /** @var array{column: string, values: list<string>}|null */
+    private ?array $onlyWhen = null;
+
     /** @var array<string, mixed> */
     private array $arguments = [];
 
@@ -87,6 +90,23 @@ final class Action implements \JsonSerializable
     }
 
     /**
+     * In a table, show this button only on the rows whose column holds one
+     * of these values: "Turn on" on the rows that are off, "Turn off" on the
+     * rows that are on. Elsewhere it is ignored.
+     *
+     * It decides what is drawn, not what is allowed. A hidden button's
+     * request can still be crafted, so the handler checks the row as it
+     * would anyway. A panel older than this field draws the button on every
+     * row.
+     */
+    public function onlyWhen(string $column, string ...$values): self
+    {
+        $this->onlyWhen = ['column' => $column, 'values' => array_values($values)];
+
+        return $this;
+    }
+
+    /**
      * Values handed back to the plugin when the action runs, such as which
      * row a table action belongs to.
      *
@@ -120,6 +140,7 @@ final class Action implements \JsonSerializable
             'confirm' => $this->confirm,
             'disabled' => $this->disabled ?: null,
             'arguments' => $this->arguments ?: null,
+            'only_when' => $this->onlyWhen,
         ], static fn ($value) => $value !== null);
     }
 }
