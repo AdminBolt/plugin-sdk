@@ -84,13 +84,42 @@ Set `panel` whenever the plugin subscribes to a hook that was added in a
 particular release. Without it the install succeeds and the hook never fires,
 which is a much worse failure than a refused install.
 
+## `requires`
+
+What the plugin needs from the server. The panel checks it before it
+downloads a release, again once the archive is unpacked, and before the
+install screen runs anything, and refuses with the reason on the plugin's
+card. An install script then never starts on a server it cannot finish on.
+
+```json
+"requires": {
+    "os": ["rhel >=9", "ubuntu >=22.04"],
+    "webserver": ["apache", "litespeed"],
+    "memory_mb": 512,
+    "disk_mb": 1024
+}
+```
+
+| Field | Notes |
+| --- | --- |
+| `os` | Distributions it runs on: `almalinux`, `rocky`, `centos`, `cloudlinux`, `debian`, `ubuntu`, or `rhel` for any Red Hat compatible one. Each may be followed by a version constraint, such as `rhel >=9`. |
+| `webserver` | The web servers that serve the customers' sites it works with: `apache`, `litespeed`, `openlitespeed`. The panel itself always runs behind its own nginx, so a plugin's own pages need nothing here. |
+| `memory_mb` | Memory that has to be free when it is installed or updated, in MB. |
+| `disk_mb` | Disk space that has to be free where plugins are kept, in MB. Count what the install script downloads and unpacks. |
+
+Every field is optional, and one left out asks for nothing. The PHP version is
+`runtime.php`, checked against the PHP the panel and its plugins run on.
+What the panel cannot read on a server, such as an unknown distribution, is
+not held against the plugin. Once a plugin is running it is not switched off
+because memory or disk ran low later.
+
 ## `runtime`
 
 | Field | Required | Notes |
 | --- | --- | --- |
 | `entrypoint` | yes | The PHP file the panel serves or executes, relative to the plugin root. Cannot contain `..`. |
 | `transport` | no | `http` (default) or `cli`. See [plugin-structure.md](plugin-structure.md). |
-| `php` | no | Constraint such as `^8.2`, checked at install. |
+| `php` | no | Constraint such as `^8.2` on the panel's PHP, which plugins run on. Checked before install and update, with `requires`. |
 | `listen` | no | Unix socket path or `127.0.0.1:port`. The panel assigns one if omitted; let it. |
 | `user` | no | System user to run as. The panel creates a dedicated unprivileged user by default and refuses root. |
 | `memory_limit` | no | For example `128M`. |

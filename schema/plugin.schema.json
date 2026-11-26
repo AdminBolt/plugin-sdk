@@ -153,6 +153,45 @@
             "type": "string",
             "description": "Minimum panel version, for example >=1.9.0. The panel refuses to install a plugin that asks for more than it is."
         },
+        "requires": {
+            "type": "object",
+            "description": "What the plugin needs from the server. The panel checks it before it downloads, places or installs the plugin, and refuses with the reason.",
+            "additionalProperties": false,
+            "properties": {
+                "os": {
+                    "type": "array",
+                    "description": "Distributions it runs on: almalinux, rocky, centos, cloudlinux, debian, ubuntu, or rhel for any Red Hat compatible one, each optionally followed by a version constraint, for example \"rhel >=9\".",
+                    "items": {
+                        "type": "string",
+                        "pattern": "^(almalinux|rocky|centos|cloudlinux|debian|ubuntu|rhel)( .+)?$"
+                    },
+                    "minItems": 1
+                },
+                "webserver": {
+                    "type": "array",
+                    "description": "Web servers that serve the customers' sites it works with.",
+                    "items": {
+                        "type": "string",
+                        "enum": [
+                            "apache",
+                            "litespeed",
+                            "openlitespeed"
+                        ]
+                    },
+                    "minItems": 1
+                },
+                "memory_mb": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Memory that has to be free when it is installed or updated, in MB."
+                },
+                "disk_mb": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Disk space that has to be free where plugins are kept when it is installed or updated, in MB."
+                }
+            }
+        },
         "runtime": {
             "type": "object",
             "required": [
