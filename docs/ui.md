@@ -91,6 +91,19 @@ The panel only ever invokes an action the plugin registered. An action name
 that is not registered is refused before any plugin code runs, so an action is
 not callable just because someone guessed its name.
 
+A row action can be drawn only on the rows it makes sense for. The button
+shows where the row's column holds one of the values given:
+
+```php
+->rowActions(
+    Action::make('enable', 'Turn on')->onlyWhen('status', 'Off'),
+    Action::make('disable', 'Turn off')->onlyWhen('status', 'On'),
+)
+```
+
+This decides what is drawn, not what is allowed: the handler still checks the
+row. A panel that does not know this yet draws every row action on every row.
+
 Responses:
 
 | | |
