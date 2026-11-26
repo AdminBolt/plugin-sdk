@@ -52,6 +52,12 @@
         "homepage": {
             "type": "string"
         },
+        "support": {
+            "type": "string",
+            "description": "Where administrators get help with this plugin: an https:// address or an email address. Shown in the store and in the panel.",
+            "maxLength": 255,
+            "pattern": "^(https?://\\S+|[^@\\s]+@[^@\\s]+\\.[^@\\s]+)$"
+        },
         "icon": {
             "type": "string",
             "description": "Heroicon name, for example heroicon-o-globe-alt, or a path to a png, jpg, webp, avif or gif inside the plugin, for example icon.png. Not SVG."
