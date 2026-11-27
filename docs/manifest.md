@@ -17,6 +17,7 @@ inline errors.
 | `license` | no | SPDX identifier, for example `MIT` or `GPL-3.0-or-later`, at most 64 characters. Shown on the screen where the administrator approves the plugin, or that it names none. |
 | `terms` | no | An `https` address of your own terms of use. Linked on the same screen, which tells the administrator that installing means accepting them. Anything other than `https` is ignored. |
 | `homepage` | no | Where to file a bug. |
+| `support` | for the store | Where administrators get help: an `https://` address or an email address. The store and the panel show it as **Get help**; the store asks for it before a plugin is published. Plugins built by AdminBolt are supported by AdminBolt. |
 | `icon` | no | Heroicon name, for example `heroicon-o-globe-alt`, or the plugin's own image, for example `icon.png`: a square png, jpg, webp, avif or gif inside the plugin, 256×256 is plenty. Not SVG, for the reason screenshots are not. |
 
 ## What it uses
@@ -114,13 +115,58 @@ which is a much worse failure than a refused install.
 How long what a plugin relies on keeps working on newer panels is in the
 [compatibility promise](compatibility.md).
 
+## `requires`
+
+What the plugin needs from the server. The panel checks it before it
+downloads a release, again once the archive is unpacked, and before the
+install screen runs anything, and refuses with the reason on the plugin's
+card. An install script then never starts on a server it cannot finish on.
+
+```json
+"requires": {
+    "os": ["rhel >=9", "ubuntu >=22.04"],
+    "webserver": ["apache", "litespeed"],
+    "memory_mb": 512,
+    "disk_mb": 1024
+}
+```
+
+| Field | Notes |
+| --- | --- |
+| `os` | Distributions it runs on: `almalinux`, `rocky`, `centos`, `cloudlinux`, `debian`, `ubuntu`, or `rhel` for any Red Hat compatible one. Each may be followed by a version constraint, such as `rhel >=9`. |
+| `webserver` | The web servers that serve the customers' sites it works with: `apache`, `litespeed`, `openlitespeed`. The panel itself always runs behind its own nginx, so a plugin's own pages need nothing here. |
+| `memory_mb` | Memory that has to be free when it is installed or updated, in MB. |
+| `disk_mb` | Disk space that has to be free where plugins are kept, in MB. Count what the install script downloads and unpacks. |
+| `plugins` | Other plugins it needs installed, by id, each with a version constraint (`"*"` for any): `{"matomo": ">=1.2"}`. A list of ids means any version. |
+
+Every field is optional, and one left out asks for nothing. The PHP version is
+`runtime.php`, checked against the PHP the panel and its plugins run on.
+What the panel cannot read on a server, such as an unknown distribution, is
+not held against the plugin. Once a plugin is running it is not switched off
+because memory or disk ran low later.
+
+### `conflicts`
+
+Plugins it cannot run next to, by id:
+
+```json
+"conflicts": ["other-analytics"]
+```
+
+Either side saying so is enough: a plugin installed first that lists the
+newcomer blocks it too. Until what it needs is installed and nothing it
+conflicts with is, the panel refuses to download or install it and says why
+on its card. Switching off or removing a plugin others need is allowed, and
+the dialog names the plugins that stop working.
+
+
 ## `runtime`
 
 | Field | Required | Notes |
 | --- | --- | --- |
 | `entrypoint` | yes | The PHP file the panel serves or executes, relative to the plugin root. Cannot contain `..`. |
 | `transport` | no | `http` (default) or `cli`. See [plugin-structure.md](plugin-structure.md). |
-| `php` | no | Constraint such as `^8.2`, checked at install. |
+| `php` | no | Constraint such as `^8.2` on the panel's PHP, which plugins run on. Checked before install and update, with `requires`. |
 | `listen` | no | Unix socket path or `127.0.0.1:port`. The panel assigns one if omitted; let it. |
 | `user` | no | System user to run as. The panel creates a dedicated unprivileged user by default and refuses root. |
 | `memory_limit` | no | For example `128M`. |
