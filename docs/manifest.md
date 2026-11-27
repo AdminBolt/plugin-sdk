@@ -224,9 +224,9 @@ When they run:
 
 - **install** once an administrator installs the plugin, and again when they press *Run setup again* on its card.
 - **update** after an update to a new version, and after an administrator rolls the plugin back to the version it had before. Write it so it also works going back: it runs the older version's script, against data the newer one may already have changed.
-- **uninstall** before the panel deletes the plugin's files. The uninstall goes ahead whatever it returns.
+- **uninstall** before the panel deletes the plugin's files. The uninstall goes ahead whatever it returns. When the administrator keeps the plugin's data, **backup** runs first, so uninstall may drop what backup saved.
 - **backup** before every scheduled server backup. See [Backup and restore](#backup-and-restore).
-- **restore** after a server restore, right after **install**. See [Backup and restore](#backup-and-restore).
+- **restore** after a server restore, right after **install**, and after the install of a plugin whose data was kept when it was removed. See [Backup and restore](#backup-and-restore).
 - **any other key** is an action: a button under *Server setup* that an
   administrator presses, after a confirmation. The name is lower-case letters,
   digits and hyphens, up to 16 characters, and the `label` is the button. The
@@ -261,6 +261,15 @@ read, and the only place the backup takes from.
   server or on a new one, and always after **install**, so whatever install
   sets up (the application, a database user, a web server entry) is there
   first. It runs only when the backup holds data for the plugin.
+
+The same two steps carry a plugin's data through its removal. An
+administrator who removes a plugin chooses to keep its data or delete
+everything, and can download it first. Keeping it runs **backup**, then
+**uninstall**, and sets aside both `BOLT_BACKUP_DIR` and the plugin's own
+`var/data`, together with its settings. Installing the plugin again, in any
+version, puts `var/data` and the settings back before **install** runs, and
+runs **restore** after it. So a plugin that keeps data elsewhere needs nothing
+more than these two steps for its data to survive being removed.
 
 Write both to be run again: a restore can be repeated with
 `bolt:restore-plugin-data`. Keep what goes into the backup to what cannot be
