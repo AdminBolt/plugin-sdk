@@ -47,7 +47,15 @@
             }
         },
         "license": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 64,
+            "description": "SPDX identifier, for example MIT or GPL-3.0-or-later. Shown to the administrator before they install the plugin."
+        },
+        "terms": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://",
+            "description": "An https address of your own terms of use, linked on the screen where the administrator approves the plugin."
         },
         "homepage": {
             "type": "string"
