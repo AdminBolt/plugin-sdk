@@ -57,6 +57,29 @@
             "pattern": "^https://",
             "description": "An https address of your own terms of use, linked on the screen where the administrator approves the plugin."
         },
+        "usage": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Where else the plugin keeps what it adds, so the panel can show how much disk it uses.",
+            "properties": {
+                "paths": {
+                    "type": "array",
+                    "maxItems": 10,
+                    "items": {
+                        "type": "string",
+                        "pattern": "^/(usr/local/bolt|var/lib|var/log|var/cache|opt|srv)/[A-Za-z0-9._/-]+$"
+                    }
+                },
+                "databases": {
+                    "type": "array",
+                    "maxItems": 10,
+                    "items": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_]{1,64}$"
+                    }
+                }
+            }
+        },
         "homepage": {
             "type": "string"
         },

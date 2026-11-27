@@ -19,6 +19,32 @@ inline errors.
 | `homepage` | no | Where to file a bug. |
 | `icon` | no | Heroicon name, for example `heroicon-o-globe-alt`, or the plugin's own image, for example `icon.png`: a square png, jpg, webp, avif or gif inside the plugin, 256×256 is plenty. Not SVG, for the reason screenshots are not. |
 
+## What it uses
+
+The plugin card shows how much disk, memory and processor each plugin uses,
+and how much its disk grew over the last 30 days. The panel measures every
+installed plugin once a day, and when an administrator presses *Measure now*.
+
+Disk counts the plugin's own directory (with `var/data`) and what its
+**backup** step saved for the server backup. A plugin that keeps data
+elsewhere says where, so that counts too:
+
+```json
+"usage": {
+    "paths": ["/usr/local/bolt/apps/matomo"],
+    "databases": ["bolt_matomo"]
+}
+```
+
+| Field | Notes |
+| --- | --- |
+| `usage.paths` | Up to ten directories, each inside `/usr/local/bolt/`, `/var/lib/`, `/var/log/`, `/var/cache/`, `/opt/` or `/srv/`. Plain absolute paths: no `..`, no spaces. Anything else is ignored. |
+| `usage.databases` | Up to ten MariaDB database names, letters, digits and `_`. |
+
+Memory and processor are those of the processes running as the plugin's own
+user, its PHP-FPM pool. Work it hands to another user, such as an application
+it installed for the web server, is not counted.
+
 ## How it is listed
 
 The plugin list is a shelf an operator browses before they install anything,
