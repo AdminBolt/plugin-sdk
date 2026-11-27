@@ -268,7 +268,7 @@ the request is scoped and audited.
 | --- | --- | --- |
 | `plugin.installed` | after install, before the first operational delivery | `version` |
 | `plugin.configured` | an operator changed a setting | `changed`: the keys whose value changed |
-| `plugin.uninstalled` | before the panel removes the files; last chance to clean up externally | `version` |
+| `plugin.uninstalled` | before the panel removes the files; last chance to clean up externally | `version`, `keep_data`: true when the administrator keeps the plugin's data, so leave what it needs to start again |
 
 Only the plugin itself is told about its own lifecycle, and only when it
 subscribed. `plugin.configured` names the settings, never their values: the
