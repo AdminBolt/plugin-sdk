@@ -14,7 +14,8 @@ inline errors.
 | `version` | yes | Semantic version. The panel compares it to decide whether an update is available. |
 | `description` | no | One line, shown on the plugin card. |
 | `author` | no | `name`, `email`, `url`. |
-| `license` | no | SPDX identifier. |
+| `license` | no | SPDX identifier, for example `MIT` or `GPL-3.0-or-later`, at most 64 characters. Shown on the screen where the administrator approves the plugin, or that it names none. |
+| `terms` | no | An `https` address of your own terms of use. Linked on the same screen, which tells the administrator that installing means accepting them. Anything other than `https` is ignored. |
 | `homepage` | no | Where to file a bug. |
 | `icon` | no | Heroicon name, for example `heroicon-o-globe-alt`, or the plugin's own image, for example `icon.png`: a square png, jpg, webp, avif or gif inside the plugin, 256×256 is plenty. Not SVG, for the reason screenshots are not. |
 
